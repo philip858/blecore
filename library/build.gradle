@@ -1,0 +1,62 @@
+apply plugin: 'com.android.library'
+apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'com.novoda.bintray-release'
+
+android {
+    compileSdkVersion 27
+
+    defaultConfig {
+        minSdkVersion 19
+        targetSdkVersion 27
+        versionCode 56
+        versionName "2.2.6"
+
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    lintOptions {
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.android.support:appcompat-v7:27.1.1'
+    implementation 'org.greenrobot:eventbus:3.1.1'
+}
+
+//class包在终端执行gradlew makeJar
+task makeJar(type: Jar, dependsOn:['build']) {
+    from file('build/intermediates/classes/release')
+    archiveName = 'blecore-2.2.6.jar'
+    destinationDir = file('build/libs')
+    //过滤不需要的class
+    exclude "**/**/BuildConfig.class"
+    exclude "**/**/BuildConfig\$*.class"
+    exclude "**/R.class"
+    exclude "**/R\$*.class"
+}
+
+// 打包源码
+task sourcesJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    classifier = 'sources'
+}
+
+artifacts {
+    archives sourcesJar
+}
+
+publish {
+    userOrg = 'fszeng2017' //bintray.com用户名  
+    groupId = 'com.github.fszeng2011' //jcenter上的路径  
+    artifactId = 'blecore' //项目名称  
+    publishVersion = '2.2.6' //版本号  
+    desc = 'android ble lib'
+    website = 'https://github.com/fszeng2011'
+}
