@@ -172,6 +172,7 @@ public class Ble {
                 if (bluetoothAdapter != null) {
                     publisher.post(Events.newBluetoothStateChanged(bluetoothAdapter.getState()));
                     if (bluetoothAdapter.getState() == BluetoothAdapter.STATE_OFF) {//蓝牙关闭了
+                        scanning = false;
                         handleScanCallback(false, null);
                         //主动断开，停止定时器和重连尝试
                         for (Connection connection : connectionMap.values()) {
