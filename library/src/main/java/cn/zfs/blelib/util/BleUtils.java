@@ -97,6 +97,13 @@ public class BleUtils {
             int shift = (bigEndian ? (7 - i) : i) << 3;
             value |= ((long) 0xff << shift) & ((long) bs[i] << shift);
         }
+        if (src.length == 1) {
+            return (byte) value;
+        } else if (src.length == 2) {
+            return (short) value;
+        } else if (src.length <= 4) {
+            return (int) value;
+        }
         return value;
     }
 

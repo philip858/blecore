@@ -135,7 +135,7 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
                     handleFaildCallback(currentRequest.requestId, currentRequest.type, REQUEST_FAIL_TYPE_GATT_STATUS_FAILED, currentRequest.value, false);
                 }
                 if (characteristic.getService().getUuid().equals(pendingCharacteristic.getService().getUuid()) && characteristic.getUuid().equals(pendingCharacteristic.getUuid())) {
-                    if (!enableNotificationOrIndication(Arrays.equals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE, currentRequest.value), true, characteristic)) {
+                    if (enableNotificationOrIndicationFail(Arrays.equals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE, currentRequest.value), true, characteristic)) {
                         handleFaildCallback(currentRequest.requestId, currentRequest.type, REQUEST_FAIL_TYPE_GATT_STATUS_FAILED, currentRequest.value, false);
                     }
                 }
@@ -144,7 +144,7 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
                     handleFaildCallback(currentRequest.requestId, currentRequest.type, REQUEST_FAIL_TYPE_GATT_STATUS_FAILED, currentRequest.value, false);
                 }
                 if (characteristic.getService().getUuid().equals(pendingCharacteristic.getService().getUuid()) && characteristic.getUuid().equals(pendingCharacteristic.getUuid())) {
-                    if (!enableNotificationOrIndication(Arrays.equals(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE, currentRequest.value), false, characteristic)) {
+                    if (enableNotificationOrIndicationFail(Arrays.equals(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE, currentRequest.value), false, characteristic)) {
                         handleFaildCallback(currentRequest.requestId, currentRequest.type, REQUEST_FAIL_TYPE_GATT_STATUS_FAILED, currentRequest.value, false);
                     }
                 }
@@ -300,21 +300,21 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
                     default:
                         BluetoothGattService gattService = bluetoothGatt.getService(request.service);
                         if (gattService != null) {
-                            BluetoothGattCharacteristic gattCharacteristic = gattService.getCharacteristic(request.characteristic);
-                            if (gattCharacteristic != null) {
+                            BluetoothGattCharacteristic characteristic = gattService.getCharacteristic(request.characteristic);
+                            if (characteristic != null) {
                                 switch(request.type) {
                                     case TOGGLE_NOTIFICATION:
                                     case TOGGLE_INDICATION:
-                                        executeIndicationOrNotification(gattCharacteristic, request.requestId, request.type, request.value);
+                                        executeIndicationOrNotification(characteristic, request.requestId, request.type, request.value);
                                         break;
                                     case READ_CHARACTERISTIC:
-                                        executeReadCharacteristic(gattCharacteristic, request.requestId);
+                                        executeReadCharacteristic(characteristic, request.requestId);
                                         break;
                                     case READ_DESCRIPTOR:
-                                        executeReadDescriptor(gattCharacteristic, request.descriptor, request.requestId);
+                                        executeReadDescriptor(characteristic, request.descriptor, request.requestId);
                                         break;
                                     case WRITE_CHARACTERISTIC:                                        
-                                        executeWriteCharacteristic(gattCharacteristic, request);
+                                        executeWriteCharacteristic(characteristic, request);
                                         break;
                                 }
                             } else {
@@ -349,13 +349,13 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
         }
     }
     
-    private void executeReadCharacteristic(BluetoothGattCharacteristic gattCharacteristic, String requestId) {
-        if (!bluetoothGatt.readCharacteristic(gattCharacteristic)) {
+    private void executeReadCharacteristic(BluetoothGattCharacteristic characteristic, String requestId) {
+        if (!bluetoothGatt.readCharacteristic(characteristic)) {
             handleFaildCallback(requestId, Request.RequestType.READ_CHARACTERISTIC, REQUEST_FAIL_TYPE_REQUEST_FAILED, null, true);
         }
     }
 
-    private void executeWriteCharacteristic(BluetoothGattCharacteristic gattCharacteristic, Request request) {
+    private void executeWriteCharacteristic(BluetoothGattCharacteristic characteristic, Request request) {
         try {
             request.waitWriteResult = Ble.getInstance().getConfiguration().isWaitWriteResult();
             request.writeDelay = Ble.getInstance().getConfiguration().getPackageWriteDelayMillis();
@@ -370,7 +370,7 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
                         if (i > 0) {
                             Thread.sleep(request.writeDelay);
                         }
-                        if (writeFail(gattCharacteristic, bytes)) {//写失败
+                        if (writeFail(characteristic, bytes)) {//写失败
                             handleWriteFailed(request);
                             return;
                         }
@@ -378,12 +378,12 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
                 } else {//等待则只直接发送第一包，剩下的添加到队列等待回调
                     request.remainQueue = new ConcurrentLinkedQueue<>();
                     request.remainQueue.addAll(list);
-                    if (writeFail(gattCharacteristic, request.remainQueue.remove())) {//写失败
+                    if (writeFail(characteristic, request.remainQueue.remove())) {//写失败
                         handleWriteFailed(request);
                         return;
                     }
                 }
-            } else if (writeFail(gattCharacteristic, request.value)) {
+            } else if (writeFail(characteristic, request.value)) {
                 handleWriteFailed(request);
                 return;
             }                       
@@ -401,14 +401,14 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
         handleFaildCallback(request.requestId, Request.RequestType.WRITE_CHARACTERISTIC, REQUEST_FAIL_TYPE_REQUEST_FAILED, request.value, true);        
     }
 
-    private boolean writeFail(BluetoothGattCharacteristic gattCharacteristic, byte[] value) {
-        gattCharacteristic.setValue(value);
-        int writeType = Ble.getInstance().getConfiguration().getWriteType();
-        if (writeType == BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT || writeType == BluetoothGattCharacteristic.WRITE_TYPE_SIGNED ||
-                writeType == BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE) {
-            gattCharacteristic.setWriteType(writeType);
+    private boolean writeFail(BluetoothGattCharacteristic characteristic, byte[] value) {
+        characteristic.setValue(value);
+        Integer writeType = Ble.getInstance().getConfiguration().getWriteType(characteristic.getService().getUuid(), characteristic.getUuid());
+        if (writeType != null && (writeType == BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT || writeType == BluetoothGattCharacteristic.WRITE_TYPE_SIGNED ||
+                writeType == BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)) {
+            characteristic.setWriteType(writeType);
         }
-        return !bluetoothGatt.writeCharacteristic(gattCharacteristic);
+        return !bluetoothGatt.writeCharacteristic(characteristic);
     }
     
     private void executeReadDescriptor(BluetoothGattCharacteristic characteristic, UUID descriptor, String requestId) {
@@ -430,14 +430,14 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
         }
     }
 
-    private boolean enableNotificationOrIndication(boolean enable, boolean notification, BluetoothGattCharacteristic characteristic) {
+    private boolean enableNotificationOrIndicationFail(boolean enable, boolean notification, BluetoothGattCharacteristic characteristic) {
         //setCharacteristicNotification是设置本机
         if (!bluetoothAdapter.isEnabled() || bluetoothGatt == null || !bluetoothGatt.setCharacteristicNotification(characteristic, enable)) {
-            return false;
+            return true;
         }
         BluetoothGattDescriptor descriptor = characteristic.getDescriptor(CLIENT_CHARACTERISTIC_CONFIG);
         if (descriptor == null) {
-            return false;
+            return true;
         }
         if (enable) {
             descriptor.setValue(notification ? BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE : BluetoothGattDescriptor.ENABLE_INDICATION_VALUE);
@@ -449,6 +449,6 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
         characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
         boolean result =  bluetoothGatt.writeDescriptor(descriptor);//把设置写入蓝牙设备
         characteristic.setWriteType(writeType);
-        return result;
+        return !result;
     }
 }

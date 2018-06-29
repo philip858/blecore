@@ -2,6 +2,10 @@ package cn.zfs.blelib.core;
 
 import android.bluetooth.BluetoothGattCharacteristic;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 /**
  * 描述: 蓝牙配置
  * 时间: 2018/4/17 17:02
@@ -21,9 +25,9 @@ public class Configuration {
     private int scanPeriodMillis = 10000;
     private boolean useBluetoothLeScanner = true;
     private int packageSize = 20;//发送数据时的分包大小
-    private int writeType;
     private boolean waitWriteResult = true;
     private boolean acceptSysConnectedDevice;
+    private Map<String, Integer> writeTypeMap = new HashMap<>();
 
     /**
      * 设置扫描过滤器
@@ -143,8 +147,8 @@ public class Configuration {
         return this;
     }
 
-    public int getWriteType() {
-        return writeType;
+    public Integer getWriteType(UUID service, UUID characteristic) {
+        return writeTypeMap.get(service.toString() + characteristic.toString());
     }
 
     /**
@@ -154,8 +158,8 @@ public class Configuration {
      * @param writeType {@link BluetoothGattCharacteristic#WRITE_TYPE_NO_RESPONSE}<br>{@link BluetoothGattCharacteristic#WRITE_TYPE_DEFAULT}<br>
      *                  {@link BluetoothGattCharacteristic#WRITE_TYPE_SIGNED}
      */
-    public Configuration setWriteType(int writeType) {
-        this.writeType = writeType;
+    public Configuration setWriteType(UUID service, UUID characteristic, int writeType) {
+        writeTypeMap.put(service.toString() + characteristic.toString(), writeType);
         return this;
     }
 
