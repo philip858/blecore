@@ -315,7 +315,8 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
         currentRequest = request;
         currentRequest.startTime = System.currentTimeMillis();    
         handler.removeMessages(MSG_REQUEST_TIMEOUT);
-        Message.obtain(handler, MSG_REQUEST_TIMEOUT, request).sendToTarget();
+        Message msg = Message.obtain(handler, MSG_REQUEST_TIMEOUT, request);
+        handler.sendMessageDelayed(msg, 1000);
         if (bluetoothAdapter.isEnabled()) {
             if (bluetoothGatt != null) {
                 switch(request.type) {                    
