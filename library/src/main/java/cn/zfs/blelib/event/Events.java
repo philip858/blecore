@@ -71,7 +71,7 @@ public class Events {
     }
 
     /**
-     * 连接创建失败
+     * 连接失败
      */
     public static class ConnectFailed extends DeviceEvent<Device> {
         /**

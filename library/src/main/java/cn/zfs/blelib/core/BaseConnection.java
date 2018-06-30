@@ -8,8 +8,11 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.NonNull;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
@@ -25,6 +28,7 @@ import cn.zfs.blelib.util.BleUtils;
  * 作者: zengfansheng
  */
 public abstract class BaseConnection extends BluetoothGattCallback implements IConnection {    
+    private static final int MSG_REQUEST_TIMEOUT = 0;
     protected BluetoothDevice bluetoothDevice;
     protected BluetoothGatt bluetoothGatt;
     protected Queue<Request> requestQueue = new ConcurrentLinkedQueue<>();
@@ -32,9 +36,11 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
     private BluetoothGattCharacteristic pendingCharacteristic;
     protected BluetoothAdapter bluetoothAdapter;
     protected boolean isReleased;
+    private TimeoutHandler handler;
 
     BaseConnection(BluetoothDevice bluetoothDevice) {
         this.bluetoothDevice = bluetoothDevice;
+        handler = new TimeoutHandler(this);
     }
     
     public void clearRequestQueue() {
@@ -265,11 +271,7 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
                 if (currentRequest == null) {
                     executeRequest(request);
                 } else {
-                    requestQueue.add(request);
-                    if (System.currentTimeMillis() - currentRequest.startTime > 1000) {
-                        handleFaildCallback(currentRequest.requestId, currentRequest.type, REQUEST_FAIL_TYPE_REQUEST_TIMEOUT, currentRequest.value, false);
-                        executeNextRequest();
-                    }                   
+                    requestQueue.add(request);                  
                 }
             }
         }
@@ -284,10 +286,36 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
             }
         }
     }
+       
+    private static class TimeoutHandler extends Handler {
+        private WeakReference<BaseConnection> weakRef;
+        
+        TimeoutHandler(BaseConnection connection) {
+            weakRef = new WeakReference<>(connection);
+        }
+        
+        @Override
+        public void handleMessage(Message msg) {
+            BaseConnection connection = weakRef.get();
+            if (connection != null) {
+                switch(msg.what) {
+                    case MSG_REQUEST_TIMEOUT:
+                        Request request = (Request) msg.obj;
+                        if (connection.currentRequest != null && connection.currentRequest == request) {
+                            connection.handleFaildCallback(request.requestId, request.type, REQUEST_FAIL_TYPE_REQUEST_TIMEOUT, request.value, false);
+                            connection.executeNextRequest();
+                        }
+                        break;
+                }               
+            }
+        }
+    }
         
     private void executeRequest(Request request) {
         currentRequest = request;
-        currentRequest.startTime = System.currentTimeMillis();
+        currentRequest.startTime = System.currentTimeMillis();    
+        handler.removeMessages(MSG_REQUEST_TIMEOUT);
+        Message.obtain(handler, MSG_REQUEST_TIMEOUT, request).sendToTarget();
         if (bluetoothAdapter.isEnabled()) {
             if (bluetoothGatt != null) {
                 switch(request.type) {                    
