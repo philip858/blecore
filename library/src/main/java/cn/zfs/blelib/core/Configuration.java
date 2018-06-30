@@ -143,7 +143,9 @@ public class Configuration {
      * @param packageSize 包大小，字节
      */
     public Configuration setPackageSize(int packageSize) {
-        this.packageSize = packageSize;
+        if (packageSize > 0) {
+            this.packageSize = packageSize;
+        }
         return this;
     }
 
