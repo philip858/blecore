@@ -3,7 +3,7 @@
 ## 代码托管
 [![](https://jitpack.io/v/fszeng2011/blecore.svg)](https://jitpack.io/#fszeng2011/blecore)
 [![Download](https://api.bintray.com/packages/fszeng2017/maven/blecore/images/download.svg) ](https://bintray.com/fszeng2017/maven/blecore/_latestVersion)
-[![JCenter](https://img.shields.io/badge/JCenter-2.2.9-green.svg?style=flat)](http://jcenter.bintray.com/com/github/fszeng2011/blecore/2.2.9/)
+[![JCenter](https://img.shields.io/badge/JCenter-2.2.10-green.svg?style=flat)](http://jcenter.bintray.com/com/github/fszeng2011/blecore/2.2.10/)
 
 ## 配置
 	

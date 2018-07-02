@@ -292,7 +292,11 @@ public class Ble {
             if (scanCallback == null) {
                 scanCallback = new MyScanCallback();
             }
-            bleScanner.startScan(scanCallback);
+            if (configuration.getScanSettings() == null) {
+                bleScanner.startScan(scanCallback);
+            } else {
+                bleScanner.startScan(null, configuration.getScanSettings(), scanCallback);
+            }            
         } else {
             if (leScanCallback == null) {
                 leScanCallback = new MyLeScanCallback();

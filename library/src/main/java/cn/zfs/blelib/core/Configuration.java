@@ -1,6 +1,7 @@
 package cn.zfs.blelib.core;
 
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.le.ScanSettings;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,6 +29,7 @@ public class Configuration {
     private boolean waitWriteResult = true;
     private boolean acceptSysConnectedDevice;
     private Map<String, Integer> writeTypeMap = new HashMap<>();
+    private ScanSettings scanSettings;
 
     /**
      * 设置扫描过滤器
@@ -196,6 +198,18 @@ public class Configuration {
 
     public Configuration setAcceptSysConnectedDevice(boolean acceptSysConnectedDevice) {
         this.acceptSysConnectedDevice = acceptSysConnectedDevice;
+        return this;
+    }
+
+    public ScanSettings getScanSettings() {
+        return scanSettings;
+    }
+
+    /**
+     * 扫描设置
+     */
+    public Configuration setScanSettings(ScanSettings scanSettings) {
+        this.scanSettings = scanSettings;
         return this;
     }
 }
