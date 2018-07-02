@@ -1,9 +1,11 @@
 package cn.zfs.bledemo
 
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.support.v4.content.ContextCompat
 import android.view.Menu
@@ -33,7 +35,10 @@ class MainActivity : CheckPermissionsActivity() {
         Ble.getInstance().setLogPrintLevel(BleLogger.ALL)//输出日志
         Ble.getInstance().addScanListener(scanListener)
         Ble.getInstance().configuration.isAcceptSysConnectedDevice = false
-        Ble.getInstance().configuration.isUseBluetoothLeScanner = PreferencesUtils.getBoolean(Consts.SP_KEY_USE_NEW_SCANNER, true)     
+        Ble.getInstance().configuration.isUseBluetoothLeScanner = PreferencesUtils.getBoolean(Consts.SP_KEY_USE_NEW_SCANNER, true)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Ble.getInstance().configuration.scanSettings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
