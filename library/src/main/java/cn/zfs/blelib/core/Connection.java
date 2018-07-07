@@ -257,8 +257,8 @@ public class Connection extends BaseConnection {
                         type = TIMEOUT_TYPE_CANNOT_DISCOVER_SERVICES;
                     }
                     Ble.getInstance().postEvent(Events.newConnectTimeout(device, type));
-                    if (autoReconnEnable && Ble.getInstance().getConfiguration().getTryReconnectTimes() == Configuration.TRY_RECONNECT_TIMES_INFINITE ||
-                            tryReconnectTimes < Ble.getInstance().getConfiguration().getTryReconnectTimes()) {
+                    if (autoReconnEnable && (Ble.getInstance().getConfiguration().getTryReconnectTimes() == Configuration.TRY_RECONNECT_TIMES_INFINITE ||
+                            tryReconnectTimes < Ble.getInstance().getConfiguration().getTryReconnectTimes())) {
                         doDisconnect(true, true);
                     } else {
                         doDisconnect(false, true);
