@@ -361,15 +361,11 @@ public class Connection extends BaseConnection {
         return autoReconnEnable;
     }
     
-    public boolean reconnect() {
+    public void reconnect() {
 	    if (!isReleased) {
             tryReconnectTimes = 0;
-            handler.removeMessages(MSG_TIMER);//停止定时器
             Message.obtain(handler, MSG_DISCONNECT, MSG_ARG_RECONNECT).sendToTarget();
-            handler.sendEmptyMessageDelayed(MSG_TIMER, 500);//重启定时器
-            return true;
 	    }
-	    return false;
 	}
 
     public void disconnect() {
@@ -392,7 +388,6 @@ public class Connection extends BaseConnection {
 	@Override
 	public void release() {
 	    super.release();
-	    handler.removeCallbacksAndMessages(null);//主动断开，停止定时器
         Message.obtain(handler, MSG_RELEASE, MSG_ARG_NOTIFY, 0).sendToTarget();
 	}
 
@@ -401,7 +396,6 @@ public class Connection extends BaseConnection {
      */
     public void releaseNoEvnet() {
         super.release();
-        handler.removeCallbacksAndMessages(null);//主动断开，停止定时器
         Message.obtain(handler, MSG_RELEASE, MSG_ARG_NONE, 0).sendToTarget();
     }
 	

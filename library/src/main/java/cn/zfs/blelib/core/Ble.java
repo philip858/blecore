@@ -434,7 +434,7 @@ public class Ble {
         if (!isInited) {
             return;
         }
-        Connection connection = connectionMap.get(device.addr);
+        Connection connection = connectionMap.remove(device.addr);
         //此前这个设备建立过连接，销毁之前的连接重新创建
         if (connection != null) {
             connection.releaseNoEvnet();
