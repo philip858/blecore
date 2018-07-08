@@ -429,8 +429,19 @@ public class Ble {
             
     /**
      * 建立连接
+     * @param autoReconnect 是否断线自动重连
      */
     public synchronized void connect(@NonNull Context context, @NonNull Device device, boolean autoReconnect, ConnectionStateChangeListener listener) {
+        connect(context, device, -1, autoReconnect, listener);
+    }
+
+    /**
+     * 建立连接
+     * @param autoReconnect 是否断线自动重连
+     * @param transport 连接时的传输模式，只在6.0以上系统有效。
+     * {@link BluetoothDevice#TRANSPORT_AUTO}<br>{@link BluetoothDevice#TRANSPORT_BREDR}<br>{@link BluetoothDevice#TRANSPORT_LE}  
+     */
+    public synchronized void connect(@NonNull Context context, @NonNull Device device, int transport, boolean autoReconnect, ConnectionStateChangeListener listener) {
         if (!isInited) {
             return;
         }
@@ -443,13 +454,13 @@ public class Ble {
         if (bondController != null && bondController.bond(device)) {
             BluetoothDevice bd = bluetoothAdapter.getRemoteDevice(device.addr);
             if (bd.getBondState() == BluetoothDevice.BOND_BONDED) {
-                connection = Connection.newInstance(bluetoothAdapter, context, device, 0, listener);
+                connection = Connection.newInstance(bluetoothAdapter, context, device, transport, 0, listener);
             } else {
                 createBond(device.addr);//配对
-                connection = Connection.newInstance(bluetoothAdapter, context, device, 1500, listener);
+                connection = Connection.newInstance(bluetoothAdapter, context, device, transport, 1500, listener);
             }
         } else {
-            connection = Connection.newInstance(bluetoothAdapter, context, device, 0, listener);
+            connection = Connection.newInstance(bluetoothAdapter, context, device, transport, 0, listener);
         }
         if (connection != null) {
             connection.setAutoReconnectEnable(autoReconnect);

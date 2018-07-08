@@ -1,9 +1,7 @@
 package cn.zfs.blelib.core;
 
-import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.le.ScanSettings;
-import android.os.Build;
 
 import java.util.HashMap;
 import java.util.Locale;
@@ -34,7 +32,6 @@ public class Configuration {
     private Map<String, Integer> writeTypeMap = new HashMap<>();
     private ScanSettings scanSettings;
     private int reconnectImmediatelyTimes = 3;//不搜索，直接通过mac最大连接次数
-    private int transport = -1;
 
     /**
      * 设置扫描过滤器
@@ -228,19 +225,5 @@ public class Configuration {
      */
     public void setReconnectImmediatelyTimes(int reconnectImmediatelyTimes) {
         this.reconnectImmediatelyTimes = reconnectImmediatelyTimes;
-    }
-
-    public int getTransport() {
-        return transport;
-    }
-
-    /**
-     * 设置连接时的传输模式，只在6.0以上系统有效
-     * @param transport {@link BluetoothDevice#TRANSPORT_AUTO}, {@link BluetoothDevice#TRANSPORT_BREDR}, {@link BluetoothDevice#TRANSPORT_LE}
-     */
-    public void setTransport(int transport) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            this.transport = transport;
-        }
     }
 }

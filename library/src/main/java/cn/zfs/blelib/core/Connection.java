@@ -54,6 +54,7 @@ public class Connection extends BaseConnection {
     private int tryReconnectTimes;//尝试重连次数
     private int lastConnectState = -1;
     private int reconnectImmediatelyCount;//不搜索，直接连接次数
+    private int transport = -1;//传输模式
 	    
     private Connection(BluetoothDevice bluetoothDevice) {
         super(bluetoothDevice);
@@ -63,27 +64,30 @@ public class Connection extends BaseConnection {
     /**
      * 连接
      * @param device 蓝牙设备
+     * @param transport 连接时的传输模式，只在6.0以上系统有效。
+     * {@link BluetoothDevice#TRANSPORT_AUTO}<br>{@link BluetoothDevice#TRANSPORT_BREDR}<br>{@link BluetoothDevice#TRANSPORT_LE}              
      */
-	synchronized static Connection newInstance(@NonNull BluetoothAdapter bluetoothAdapter, @NonNull Context context, @NonNull Device device,
-                                               long connectDelay, ConnectionStateChangeListener stateChangeListener) {
-		if (device.addr == null || !device.addr.matches("^[0-9A-F]{2}(:[0-9A-F]{2}){5}$")) {
+    synchronized static Connection newInstance(@NonNull BluetoothAdapter bluetoothAdapter, @NonNull Context context, @NonNull Device device,
+                                               int transport, long connectDelay, ConnectionStateChangeListener stateChangeListener) {
+        if (device.addr == null || !device.addr.matches("^[0-9A-F]{2}(:[0-9A-F]{2}){5}$")) {
             Ble.println(Connection.class, Log.ERROR, String.format(Locale.US, "CONNECT FAILED [type: unspecified mac address, name: %s, mac: %s]",
                     device.name, device.addr));
-			notifyConnectFailed(device, CONNECT_FAIL_TYPE_UNSPECIFIED_MAC_ADDRESS, stateChangeListener);
-			return null;
-		}
-		//初始化并建立连接
-		Connection conn = new Connection(bluetoothAdapter.getRemoteDevice(device.addr));
-		conn.bluetoothAdapter = bluetoothAdapter;
-		conn.device = device;
-		conn.context = context.getApplicationContext();
-		conn.stateChangeListener = stateChangeListener;
-		//连接蓝牙设备
+            notifyConnectFailed(device, CONNECT_FAIL_TYPE_UNSPECIFIED_MAC_ADDRESS, stateChangeListener);
+            return null;
+        }
+        //初始化并建立连接
+        Connection conn = new Connection(bluetoothAdapter.getRemoteDevice(device.addr));
+        conn.bluetoothAdapter = bluetoothAdapter;
+        conn.device = device;
+        conn.context = context.getApplicationContext();
+        conn.stateChangeListener = stateChangeListener;
+        conn.transport = transport;
+        //连接蓝牙设备
         conn.connStartTime = System.currentTimeMillis();
         conn.handler.sendEmptyMessageDelayed(MSG_CONNECT, connectDelay);//连接
         conn.handler.sendEmptyMessageDelayed(MSG_TIMER, connectDelay);//启动定时器，用于断线重连
-		return conn;
-	}
+        return conn;
+    }
 
     /**
      * 获取当前连接的设备
@@ -320,7 +324,6 @@ public class Connection extends BaseConnection {
             public void run() {
                 if (!isReleased) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        int transport = Ble.getInstance().getConfiguration().getTransport();
                         bluetoothGatt = bluetoothDevice.connectGatt(context, false, Connection.this,
                                 transport == -1 ? BluetoothDevice.TRANSPORT_LE : transport);
                     } else {
