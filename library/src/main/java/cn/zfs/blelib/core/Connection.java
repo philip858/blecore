@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -50,8 +51,9 @@ public class Connection extends BaseConnection {
 	private long connStartTime;
     private boolean autoReconnEnable = true;//重连控制
 	private int refreshTimes;//记录刷新次数，如果成功发现服务器，则清零
-    private int tryReconnectTimes;
+    private int tryReconnectTimes;//尝试重连次数
     private int lastConnectState = -1;
+    private int reconnectImmediatelyCount;//不搜索，直接连接次数
 	    
     private Connection(BluetoothDevice bluetoothDevice) {
         super(bluetoothDevice);
@@ -76,10 +78,8 @@ public class Connection extends BaseConnection {
 		conn.device = device;
 		conn.context = context.getApplicationContext();
 		conn.stateChangeListener = stateChangeListener;
-		//连接蓝牙设备        
-        conn.device.connectionState = STATE_CONNECTING;
+		//连接蓝牙设备
         conn.connStartTime = System.currentTimeMillis();
-        conn.sendConnectionCallback();
         conn.handler.sendEmptyMessageDelayed(MSG_CONNECT, connectDelay);//连接
         conn.handler.sendEmptyMessageDelayed(MSG_TIMER, connectDelay);//启动定时器，用于断线重连
 		return conn;
@@ -108,20 +108,26 @@ public class Connection extends BaseConnection {
     
     public synchronized void onScanResult(String addr) {
 	    if (!isReleased && device.addr.equals(addr) && device.connectionState == STATE_RECONNECTING) {
-            device.connectionState = STATE_CONNECTING;
-            sendConnectionCallback();
             handler.sendEmptyMessage(MSG_CONNECT);
 	    }
     }
     
     public synchronized void onScanStop() {
 	    if (!isReleased && device.connectionState == STATE_RECONNECTING) {
-	        if (Ble.getInstance().getConfiguration().getTryReconnectTimes() == Configuration.TRY_RECONNECT_TIMES_INFINITE ||
-                    tryReconnectTimes < Ble.getInstance().getConfiguration().getTryReconnectTimes()) {
-	            tryReconnectTimes++;
-                tryReconnect();
-	        }        
-	    }
+            postDelayScanBle();
+        }
+    }
+
+    private void postDelayScanBle() {
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (!isReleased) {
+                    //开启扫描，扫描到才连接
+                    Ble.getInstance().startScan(context);
+                }
+            }
+        }, 2000);
     }
 
     private static class ConnHandler extends Handler {
@@ -134,8 +140,8 @@ public class Connection extends BaseConnection {
 
         @Override
         public void handleMessage(Message msg) {
-            final Connection conn = ref.get();
-            if (conn == null) {
+            Connection conn = ref.get();
+            if (conn == null || (conn.isReleased && msg.what != MSG_RELEASE)) {
                 return;
             }
             if (conn.bluetoothAdapter.isEnabled()) {
@@ -191,22 +197,29 @@ public class Connection extends BaseConnection {
     }
     
     private void doOnConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-        if (status == BluetoothGatt.GATT_SUCCESS && newState == BluetoothProfile.STATE_CONNECTED) {
-            Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "CONNECTED [name: %s, mac: %s]",
-                    gatt.getDevice().getName(), gatt.getDevice().getAddress()));           
-            device.connectionState = STATE_CONNECTED;
-            sendConnectionCallback();            
-            // 进行服务发现，延时
-            handler.sendEmptyMessageDelayed(MSG_DISCOVER_SERVICES, Ble.getInstance().getConfiguration().getDiscoverServicesDelayMillis());
-        } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-            Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "DISCONNECTED [name: %s, mac: %s, autoReconnEnable: %s]",
-                    gatt.getDevice().getName(), gatt.getDevice().getAddress(), String.valueOf(autoReconnEnable)));
-            clearRequestQueue();
-            notifyDisconnected();
-        } else if (status == 133) {
-            doClearTaskAndRefresh(true);
+        if (status == BluetoothGatt.GATT_SUCCESS) {
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "CONNECTED [name: %s, mac: %s]",
+                        gatt.getDevice().getName(), gatt.getDevice().getAddress()));
+                device.connectionState = STATE_CONNECTED;
+                sendConnectionCallback();
+                // 进行服务发现，延时
+                handler.sendEmptyMessageDelayed(MSG_DISCOVER_SERVICES, Ble.getInstance().getConfiguration().getDiscoverServicesDelayMillis());
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "DISCONNECTED [name: %s, mac: %s, autoReconnEnable: %s]",
+                        gatt.getDevice().getName(), gatt.getDevice().getAddress(), String.valueOf(autoReconnEnable)));
+                clearRequestQueue();
+                notifyDisconnected();
+            }
+        } else {
             Ble.println(Connection.class, Log.ERROR, String.format(Locale.US, "GATT ERROR [name: %s, mac: %s, status: %d]",
                     gatt.getDevice().getName(), gatt.getDevice().getAddress(), status));
+            if (status == 133) {
+                doClearTaskAndRefresh();
+            } else {
+                clearRequestQueue();
+                notifyDisconnected();
+            }
         }
     }
     
@@ -216,15 +229,16 @@ public class Connection extends BaseConnection {
             Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "SERVICES DISCOVERED [name: %s, mac: %s, size: %d]",
                     gatt.getDevice().getName(), gatt.getDevice().getAddress(), gatt.getServices().size()));
             if (services.isEmpty()) {
-                doClearTaskAndRefresh(true);
+                doClearTaskAndRefresh();
             } else {
                 refreshTimes = 0;
                 tryReconnectTimes = 0;
+                reconnectImmediatelyCount = 0;
                 device.connectionState = STATE_SERVICE_DISCOVERED;
                 sendConnectionCallback();
             }
         } else {
-            doClearTaskAndRefresh(true);
+            doClearTaskAndRefresh();
             Ble.println(Connection.class, Log.ERROR, String.format(Locale.US, "GATT ERROR [status: %d, name: %s, mac: %s]",
                     status, gatt.getDevice().getName(), gatt.getDevice().getAddress()));
         }
@@ -241,37 +255,39 @@ public class Connection extends BaseConnection {
     }
     
     private void doTimer() {
-        //只处理不在连接状态的
-        if (!isReleased && device.connectionState != STATE_SERVICE_DISCOVERED) {
-            if (device.connectionState != STATE_DISCONNECTED) {
-                //超时
-                if (System.currentTimeMillis() - connStartTime > Ble.getInstance().getConfiguration().getConnectTimeoutMillis()) {
-                    connStartTime = System.currentTimeMillis();
-                    Ble.println(Connection.class, Log.ERROR, String.format(Locale.US, "CONNECT TIMEOUT [name: %s, mac: %s]", device.name, device.addr));
-                    int type;
-                    if (device.connectionState == STATE_RECONNECTING) {
-                        type = TIMEOUT_TYPE_CANNOT_DISCOVER_DEVICE;
-                    } else if (device.connectionState == STATE_CONNECTING) {
-                        type = TIMEOUT_TYPE_CANNOT_CONNECT;
-                    } else {
-                        type = TIMEOUT_TYPE_CANNOT_DISCOVER_SERVICES;
-                    }
-                    Ble.getInstance().postEvent(Events.newConnectTimeout(device, type));
-                    if (autoReconnEnable && (Ble.getInstance().getConfiguration().getTryReconnectTimes() == Configuration.TRY_RECONNECT_TIMES_INFINITE ||
-                            tryReconnectTimes < Ble.getInstance().getConfiguration().getTryReconnectTimes())) {
-                        doDisconnect(true, true);
-                    } else {
-                        doDisconnect(false, true);
-                        notifyConnectFailed(device, CONNECT_FAIL_TYPE_MAXIMUM_RECONNECTION, stateChangeListener);
-                        Ble.println(Connection.class, Log.ERROR, String.format(Locale.US, "CONNECT FAILED [type: maximun reconnection, name: %s, mac: %s]", 
-                                device.name, device.addr));
-                    }
-                }                
-            } else if (autoReconnEnable) {
-                doDisconnect(true, true);
+        if (!isReleased) {
+            //只处理不在连接状态的
+            if (device.connectionState != STATE_SERVICE_DISCOVERED) {
+                if (device.connectionState != STATE_DISCONNECTED) {
+                    //超时
+                    if (System.currentTimeMillis() - connStartTime > Ble.getInstance().getConfiguration().getConnectTimeoutMillis()) {
+                        connStartTime = System.currentTimeMillis();
+                        Ble.println(Connection.class, Log.ERROR, String.format(Locale.US, "CONNECT TIMEOUT [name: %s, mac: %s]", device.name, device.addr));
+                        int type;
+                        if (device.connectionState == STATE_RECONNECTING) {
+                            type = TIMEOUT_TYPE_CANNOT_DISCOVER_DEVICE;
+                        } else if (device.connectionState == STATE_CONNECTING) {
+                            type = TIMEOUT_TYPE_CANNOT_CONNECT;
+                        } else {
+                            type = TIMEOUT_TYPE_CANNOT_DISCOVER_SERVICES;
+                        }
+                        Ble.getInstance().postEvent(Events.newConnectTimeout(device, type));
+                        if (autoReconnEnable && (Ble.getInstance().getConfiguration().getTryReconnectTimes() == Configuration.TRY_RECONNECT_TIMES_INFINITE ||
+                                tryReconnectTimes < Ble.getInstance().getConfiguration().getTryReconnectTimes())) {
+                            doDisconnect(true, true);
+                        } else {
+                            doDisconnect(false, true);
+                            notifyConnectFailed(device, CONNECT_FAIL_TYPE_MAXIMUM_RECONNECTION, stateChangeListener);
+                            Ble.println(Connection.class, Log.ERROR, String.format(Locale.US, "CONNECT FAILED [type: maximun reconnection, name: %s, mac: %s]", 
+                                    device.name, device.addr));
+                        }
+                    }                
+                } else if (autoReconnEnable) {
+                    doDisconnect(true, true);
+                }
             }
+            handler.sendEmptyMessageDelayed(MSG_TIMER, 500);            
         }
-        handler.sendEmptyMessageDelayed(MSG_TIMER, 500);
     }
         
     //处理刷新
@@ -294,6 +310,8 @@ public class Connection extends BaseConnection {
     }
     
     private void doConnect() {
+        device.connectionState = STATE_CONNECTING;
+        sendConnectionCallback();
         Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "CONNECTING [name: %s, mac: %s]", device.name, device.addr));
         //连接时需要停止蓝牙扫描
         Ble.getInstance().stopScan();
@@ -301,14 +319,20 @@ public class Connection extends BaseConnection {
             @Override
             public void run() {
                 if (!isReleased) {
-                    bluetoothGatt = bluetoothDevice.connectGatt(context, false, Connection.this);
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        int transport = Ble.getInstance().getConfiguration().getTransport();
+                        bluetoothGatt = bluetoothDevice.connectGatt(context, false, Connection.this,
+                                transport == -1 ? BluetoothDevice.TRANSPORT_LE : transport);
+                    } else {
+                        bluetoothGatt = bluetoothDevice.connectGatt(context, false, Connection.this);
+                    }
                 }
             }
         }, 500);
     }
     
     private void doDisconnect(boolean reconnect, boolean notify) {
-	    doClearTaskAndRefresh(false);
+	    clearRequestQueue();
         if (bluetoothGatt != null) {
             bluetoothGatt.disconnect();
             bluetoothGatt.close();
@@ -317,40 +341,46 @@ public class Connection extends BaseConnection {
         if (isReleased) {//销毁
             device.connectionState = STATE_RELEASED;
             bluetoothGatt = null;
+            handler.removeCallbacksAndMessages(null);
             Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "CONNECTION RELEASED [name: %s, mac: %s]", device.name, device.addr));
         } else if (reconnect) {
-            device.connectionState = STATE_RECONNECTING;
-            tryReconnect();
+            tryReconnectTimes++;
+            if (reconnectImmediatelyCount < Ble.getInstance().getConfiguration().getReconnectImmediatelyTimes()) {
+                reconnectImmediatelyCount++;
+                connStartTime = System.currentTimeMillis();
+                doConnect();
+            } else {
+                device.connectionState = STATE_RECONNECTING;
+                tryScanReconnect();
+            }
         }        
         if (notify) {
             sendConnectionCallback();
         }
     }
 
-    private void tryReconnect() {        
+    private void tryScanReconnect() {        
         if (!isReleased) {
             Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "RECONNECTING [name: %s, mac: %s]", device.name, device.addr));
             connStartTime = System.currentTimeMillis();
-            //开启扫描，扫描到才连接
-            Ble.getInstance().startScan(context);
+            Ble.getInstance().stopScan();
+            postDelayScanBle();
         }
     }
 
-    private void doClearTaskAndRefresh(boolean refresh) {
+    private void doClearTaskAndRefresh() {
         clearRequestQueue();
-        if (refresh) {
-            doRefresh(true);
-        }       
+        doRefresh(true);       
     }
     
     private void sendConnectionCallback() {
 	    if (lastConnectState != device.connectionState) {
+            lastConnectState = device.connectionState;
             if (stateChangeListener != null) {
                 stateChangeListener.onConnectionStateChanged(device);
             }
             Ble.getInstance().postEvent(Events.newConnectionStateChanged(device, device.connectionState));
-	    }
-	    lastConnectState = device.connectionState;
+	    }	    
     }
     
     void setAutoReconnectEnable(boolean enable) {
@@ -364,6 +394,7 @@ public class Connection extends BaseConnection {
     public void reconnect() {
 	    if (!isReleased) {
             tryReconnectTimes = 0;
+            reconnectImmediatelyCount = 0;
             Message.obtain(handler, MSG_DISCONNECT, MSG_ARG_RECONNECT).sendToTarget();
 	    }
 	}

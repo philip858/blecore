@@ -1,9 +1,12 @@
 package cn.zfs.blelib.core;
 
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.le.ScanSettings;
+import android.os.Build;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -13,12 +16,12 @@ import java.util.UUID;
  * 作者: zengfansheng
  */
 public class Configuration {
-    private static final int DEFAULT_DISCOVER_SERVICES_DELAY_MILLIS = 500;
-    private static final int DEFAULT_CONN_TIMEOUT_MILLIS = 8000;//连接超时时间
+    private static final int WRITE_TYPE = 0;//写入类型
     public static final int TRY_RECONNECT_TIMES_INFINITE = -1;//无限重连
+    
     private IScanHandler scanHandler;
-    private long discoverServicesDelayMillis = DEFAULT_DISCOVER_SERVICES_DELAY_MILLIS;
-    private int connectTimeoutMillis = DEFAULT_CONN_TIMEOUT_MILLIS;
+    private long discoverServicesDelayMillis = 500;
+    private int connectTimeoutMillis = 8000;//连接超时时间
     private IBondController bondController;
     private int tryReconnectTimes = TRY_RECONNECT_TIMES_INFINITE;
     private int packageWriteDelayMillis;
@@ -30,6 +33,8 @@ public class Configuration {
     private boolean acceptSysConnectedDevice;
     private Map<String, Integer> writeTypeMap = new HashMap<>();
     private ScanSettings scanSettings;
+    private int reconnectImmediatelyTimes = 3;//不搜索，直接通过mac最大连接次数
+    private int transport = -1;
 
     /**
      * 设置扫描过滤器
@@ -152,7 +157,7 @@ public class Configuration {
     }
 
     public Integer getWriteType(UUID service, UUID characteristic) {
-        return writeTypeMap.get(service.toString() + characteristic.toString());
+        return writeTypeMap.get(String.format(Locale.US, "%s:%s:%d", service.toString(), characteristic.toString(), WRITE_TYPE));
     }
 
     /**
@@ -163,7 +168,7 @@ public class Configuration {
      *                  {@link BluetoothGattCharacteristic#WRITE_TYPE_SIGNED}
      */
     public Configuration setWriteType(UUID service, UUID characteristic, int writeType) {
-        writeTypeMap.put(service.toString() + characteristic.toString(), writeType);
+        writeTypeMap.put(String.format(Locale.US, "%s:%s:%d", service.toString(), characteristic.toString(), WRITE_TYPE), writeType);
         return this;
     }
 
@@ -211,5 +216,31 @@ public class Configuration {
     public Configuration setScanSettings(ScanSettings scanSettings) {
         this.scanSettings = scanSettings;
         return this;
+    }
+
+    public int getReconnectImmediatelyTimes() {
+        return reconnectImmediatelyTimes;
+    }
+
+    /**
+     * 连接失败或连接断开时，不搜索，直接通过mac尝试重连
+     * @param reconnectImmediatelyTimes 最大尝试次数。超过此次数后进行搜索重连
+     */
+    public void setReconnectImmediatelyTimes(int reconnectImmediatelyTimes) {
+        this.reconnectImmediatelyTimes = reconnectImmediatelyTimes;
+    }
+
+    public int getTransport() {
+        return transport;
+    }
+
+    /**
+     * 设置连接时的传输模式，只在6.0以上系统有效
+     * @param transport {@link BluetoothDevice#TRANSPORT_AUTO}, {@link BluetoothDevice#TRANSPORT_BREDR}, {@link BluetoothDevice#TRANSPORT_LE}
+     */
+    public void setTransport(int transport) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            this.transport = transport;
+        }
     }
 }
