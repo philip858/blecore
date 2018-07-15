@@ -220,9 +220,11 @@ public class Events {
      */
     public static class LogChanged {
         public String log;
+        public int level;
 
-        private LogChanged(String log) {
+        private LogChanged(String log, int level) {
             this.log = log;
+            this.level = level;
         }
     }
     
@@ -278,7 +280,7 @@ public class Events {
         return new RequestFailed(requestId, requestType, failType, src);
     }
     
-    public static LogChanged newLogChanged(String log) {
-        return new LogChanged(log);
+    public static LogChanged newLogChanged(String log, int level) {
+        return new LogChanged(log, level);
     }
 }

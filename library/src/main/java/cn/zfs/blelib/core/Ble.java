@@ -94,7 +94,7 @@ public class Ble {
     }
 
     public static void println(Class cls, int priority, @NonNull String msg) {
-        Ble.getInstance().postEvent(Events.newLogChanged(msg));
+        Ble.getInstance().postEvent(Events.newLogChanged(msg, BleLogger.getLevel(priority)));
         Ble.getInstance().logger.println("blelib:" + cls.getSimpleName(), priority, "blelib--" + msg);
     }
     

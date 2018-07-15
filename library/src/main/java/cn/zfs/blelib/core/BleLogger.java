@@ -36,28 +36,25 @@ public class BleLogger {
     }
     
     private boolean accept(int priority) {
-        int level;
+        int level = getLevel(priority);
+        return (printLevel & NONE) != NONE && (printLevel & level) == level;
+    }
+    
+    public static int getLevel(int priority) {
         switch(priority) {
             case Log.ERROR:
-                level = ERROR;
-                break;
+                return ERROR;
             case Log.WARN:
-                level = WARN;
-                break;
+                return WARN;
             case Log.INFO:
-                level = INFO;
-                break;
+                return INFO;
             case Log.DEBUG:
-                level = DEBUG;
-                break;
+                return DEBUG;
             case Log.VERBOSE:
-                level = VERBOSE;
-                break;
+                return VERBOSE;
             default:
-                level = NONE;
-                break;
+                return NONE;
         }
-        return (printLevel & NONE) != NONE && (printLevel & level) == level;
     }
 
     void println(String tag, int priority, @NonNull String msg) {        
