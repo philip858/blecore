@@ -55,6 +55,7 @@ public class Connection extends BaseConnection {
     private int lastConnectState = -1;
     private int reconnectImmediatelyCount;//不搜索，直接连接次数
     private int transport = -1;//传输模式
+    private boolean refreshing;
 	    
     private Connection(BluetoothDevice bluetoothDevice) {
         super(bluetoothDevice);
@@ -261,7 +262,7 @@ public class Connection extends BaseConnection {
     private void doTimer() {
         if (!isReleased) {
             //只处理不在连接状态的
-            if (device.connectionState != STATE_SERVICE_DISCOVERED) {
+            if (device.connectionState != STATE_SERVICE_DISCOVERED && !refreshing) {
                 if (device.connectionState != STATE_DISCONNECTED) {
                     //超时
                     if (System.currentTimeMillis() - connStartTime > Ble.getInstance().getConfiguration().getConnectTimeoutMillis()) {
@@ -300,6 +301,7 @@ public class Connection extends BaseConnection {
 	    connStartTime = System.currentTimeMillis();//防止刷新过程自动重连
         if (bluetoothGatt != null) {
             bluetoothGatt.disconnect();
+            refreshing = true;
             if (isAuto) {
                 if (refreshTimes <= 5) {
                     refresh(bluetoothGatt);
@@ -308,12 +310,21 @@ public class Connection extends BaseConnection {
             } else {
                 refresh(bluetoothGatt);
             }
-            bluetoothGatt.close();
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (refreshing) {
+                        refreshing = false;
+                        bluetoothGatt.close();
+                    }
+                }
+            }, 2000);
         }
         notifyDisconnected();
     }
     
     private void doConnect() {
+        refreshing = false;
         device.connectionState = STATE_CONNECTING;
         sendConnectionCallback();
         Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "CONNECTING [name: %s, mac: %s]", device.name, device.addr));
