@@ -324,7 +324,10 @@ public class Connection extends BaseConnection {
     }
     
     private void doConnect() {
-        refreshing = false;
+        if (refreshing) {
+            refreshing = false;
+            bluetoothGatt.close();
+        }
         device.connectionState = STATE_CONNECTING;
         sendConnectionCallback();
         Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "CONNECTING [name: %s, mac: %s]", device.name, device.addr));
