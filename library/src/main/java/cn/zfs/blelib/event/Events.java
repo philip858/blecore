@@ -1,13 +1,13 @@
 package cn.zfs.blelib.event;
 
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothGattCharacteristic;
-import android.bluetooth.BluetoothGattDescriptor;
 import android.support.annotation.NonNull;
 
 import cn.zfs.blelib.core.BaseConnection;
 import cn.zfs.blelib.core.Connection;
 import cn.zfs.blelib.core.Device;
+import cn.zfs.blelib.core.GattCharacteristic;
+import cn.zfs.blelib.core.GattDescriptor;
 import cn.zfs.blelib.core.Request;
 
 /**
@@ -38,9 +38,9 @@ public class Events {
      * onCharacteristicChanged，收到设备notify值 （设备上报值）
      */
     public static class CharacteristicChanged extends DeviceEvent<Device> {
-        public BluetoothGattCharacteristic characteristic;
+        public GattCharacteristic characteristic;
 
-        private CharacteristicChanged(@NonNull Device device, BluetoothGattCharacteristic characteristic) {
+        private CharacteristicChanged(@NonNull Device device, @NonNull GattCharacteristic characteristic) {
             super(device);
             this.characteristic = characteristic;
         }
@@ -50,9 +50,9 @@ public class Events {
      * onCharacteristicRead，读取到特征字的值
      */
     public static class CharacteristicRead extends BothDeviceAndRequestIdEvent<Device> {
-        public BluetoothGattCharacteristic characteristic;
+        public GattCharacteristic characteristic;
 
-        private CharacteristicRead(@NonNull Device device, @NonNull String requestId, BluetoothGattCharacteristic characteristic) {
+        private CharacteristicRead(@NonNull Device device, @NonNull String requestId, @NonNull GattCharacteristic characteristic) {
             super(device, requestId);
             this.characteristic = characteristic;
         }
@@ -128,9 +128,9 @@ public class Events {
     }
 
     public static class DescriptorRead extends BothDeviceAndRequestIdEvent<Device> {
-        public BluetoothGattDescriptor descriptor;
+        public GattDescriptor descriptor;
 
-        private DescriptorRead(@NonNull Device device, @NonNull String requestId, BluetoothGattDescriptor descriptor) {
+        private DescriptorRead(@NonNull Device device, @NonNull String requestId, @NonNull GattDescriptor descriptor) {
             super(device, requestId);
             this.descriptor = descriptor;
         }
@@ -140,10 +140,10 @@ public class Events {
      * indication开关状态变化
      */
     public static class IndicationChanged extends BothDeviceAndRequestIdEvent<Device> {
-        public BluetoothGattDescriptor descriptor;
+        public GattDescriptor descriptor;
         public boolean isEnabled;
 
-        private IndicationChanged(@NonNull Device device, @NonNull String requestId, BluetoothGattDescriptor descriptor, boolean isEnabled) {
+        private IndicationChanged(@NonNull Device device, @NonNull String requestId, @NonNull GattDescriptor descriptor, boolean isEnabled) {
             super(device, requestId);
             this.descriptor = descriptor;
             this.isEnabled = isEnabled;
@@ -167,10 +167,10 @@ public class Events {
      * notification开关状态变化
      */
     public static class NotificationChanged extends BothDeviceAndRequestIdEvent<Device> {
-        public BluetoothGattDescriptor descriptor;
+        public GattDescriptor descriptor;
         public boolean isEnabled;
 
-        private NotificationChanged(@NonNull Device device, @NonNull String requestId, BluetoothGattDescriptor descriptor, boolean isEnabled) {
+        private NotificationChanged(@NonNull Device device, @NonNull String requestId, @NonNull GattDescriptor descriptor, boolean isEnabled) {
             super(device, requestId);
             this.descriptor = descriptor;
             this.isEnabled = isEnabled;
@@ -232,11 +232,11 @@ public class Events {
         return new BluetoothStateChanged(state);
     }
 
-    public static CharacteristicChanged newCharacteristicChanged(@NonNull Device device, BluetoothGattCharacteristic characteristic) {
+    public static CharacteristicChanged newCharacteristicChanged(@NonNull Device device, @NonNull GattCharacteristic characteristic) {
         return new CharacteristicChanged(device, characteristic);
     }
 
-    public static CharacteristicRead newCharacteristicRead(@NonNull Device device, @NonNull String requestId, BluetoothGattCharacteristic characteristic) {
+    public static CharacteristicRead newCharacteristicRead(@NonNull Device device, @NonNull String requestId, @NonNull GattCharacteristic characteristic) {
         return new CharacteristicRead(device, requestId, characteristic);
     }
 
@@ -256,11 +256,11 @@ public class Events {
         return new ConnectTimeout(device, type);
     }
 
-    public static DescriptorRead newDescriptorRead(@NonNull Device device, @NonNull String requestId, BluetoothGattDescriptor descriptor) {
+    public static DescriptorRead newDescriptorRead(@NonNull Device device, @NonNull String requestId, @NonNull GattDescriptor descriptor) {
         return new DescriptorRead(device, requestId, descriptor);
     }
 
-    public static IndicationChanged newIndicationChanged(@NonNull Device device, @NonNull String requestId, BluetoothGattDescriptor descriptor, boolean isEnabled) {
+    public static IndicationChanged newIndicationChanged(@NonNull Device device, @NonNull String requestId, @NonNull GattDescriptor descriptor, boolean isEnabled) {
         return new IndicationChanged(device, requestId, descriptor, isEnabled);
     }
 
@@ -268,7 +268,7 @@ public class Events {
         return new MtuChanged(device, requestId, mtu);
     }
 
-    public static NotificationChanged newNotificationChanged(@NonNull Device device, @NonNull String requestId, BluetoothGattDescriptor descriptor, boolean isEnabled) {
+    public static NotificationChanged newNotificationChanged(@NonNull Device device, @NonNull String requestId, @NonNull GattDescriptor descriptor, boolean isEnabled) {
         return new NotificationChanged(device, requestId, descriptor, isEnabled);
     }
 

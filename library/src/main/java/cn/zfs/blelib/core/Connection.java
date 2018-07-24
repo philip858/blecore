@@ -477,13 +477,13 @@ public class Connection extends BaseConnection {
 	
     @Override
     public void onCharacteristicRead(@NonNull String requestId, BluetoothGattCharacteristic characteristic) {
-        Ble.getInstance().postEvent(Events.newCharacteristicRead(device, requestId, characteristic));
+        Ble.getInstance().postEvent(Events.newCharacteristicRead(device, requestId, new GattCharacteristic(characteristic.getService().getUuid(), characteristic.getUuid(), characteristic.getValue())));
         Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "CHARACTERISTIC READ [mac: %s, value: %s]", device.addr, getHex(characteristic.getValue())));
     }
 
     @Override
     public void onCharacteristicChanged(BluetoothGattCharacteristic characteristic) {
-        Ble.getInstance().postEvent(Events.newCharacteristicChanged(device, characteristic));
+        Ble.getInstance().postEvent(Events.newCharacteristicChanged(device, new GattCharacteristic(characteristic.getService().getUuid(), characteristic.getUuid(), characteristic.getValue())));
         Ble.println(Connection.class, Log.INFO, String.format(Locale.US, "CHARACTERISTIC CHANGE [mac: %s, value: %s]", device.addr, getHex(characteristic.getValue())));
     }
 
@@ -507,19 +507,22 @@ public class Connection extends BaseConnection {
 
     @Override
     public void onDescriptorRead(@NonNull String requestId, BluetoothGattDescriptor descriptor) {
-        Ble.getInstance().postEvent(Events.newDescriptorRead(device, requestId, descriptor));
+        BluetoothGattCharacteristic characteristic = descriptor.getCharacteristic();
+        Ble.getInstance().postEvent(Events.newDescriptorRead(device, requestId, new GattDescriptor(characteristic.getService().getUuid(), characteristic.getUuid(), descriptor.getUuid(), descriptor.getValue())));
         Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "DESCRIPTOR READ [mac: %s, value: %s]", device.addr, getHex(descriptor.getValue())));
     }
 
     @Override
     public void onNotificationChanged(@NonNull String requestId, BluetoothGattDescriptor descriptor, boolean isEnabled) {
-        Ble.getInstance().postEvent(Events.newNotificationChanged(device, requestId, descriptor, isEnabled));
+        BluetoothGattCharacteristic characteristic = descriptor.getCharacteristic();
+        Ble.getInstance().postEvent(Events.newNotificationChanged(device, requestId, new GattDescriptor(characteristic.getService().getUuid(), characteristic.getUuid(), descriptor.getUuid(), descriptor.getValue()), isEnabled));
         Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, (isEnabled ? "NOTIFICATION ENABLED" : "NOTIFICATION DISABLED") + " [mac: %s]", device.addr));
     }
 
     @Override
     public void onIndicationChanged(@NonNull String requestId, BluetoothGattDescriptor descriptor, boolean isEnabled) {
-        Ble.getInstance().postEvent(Events.newIndicationChanged(device, requestId, descriptor, isEnabled));
+        BluetoothGattCharacteristic characteristic = descriptor.getCharacteristic();
+        Ble.getInstance().postEvent(Events.newIndicationChanged(device, requestId, new GattDescriptor(characteristic.getService().getUuid(), characteristic.getUuid(), descriptor.getUuid(), descriptor.getValue()), isEnabled));
         Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, (isEnabled ? "INDICATION ENABLED" : "INDICATION DISABLED") + " [mac: %s]", device.addr));
     }
 
