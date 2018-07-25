@@ -55,18 +55,18 @@ public class Ble {
     private Configuration configuration;
     private List<ScanListener> scanListeners;
     private Handler mainThreadHandler;
-    private ExecutorService executorService;
     private EventBus publisher;
     private BleLogger logger;
+    private ExecutorService executorService;
 
     private Ble() {
         configuration = new Configuration();
         connectionMap = new ConcurrentHashMap<>();
         mainThreadHandler = new Handler(Looper.getMainLooper());
         scanListeners = new ArrayList<>();
-        executorService = Executors.newFixedThreadPool(5);
         publisher = EventBus.builder().build();
         logger = new BleLogger();
+        executorService = Executors.newCachedThreadPool();
     }
 
     private static class Holder {
@@ -203,18 +203,26 @@ public class Ble {
     public boolean isInitialized() {
         return isInited;
     }
-    
-    ExecutorService getExecutorService() {
-        return executorService;
+        
+    public void postEvent(@NonNull Object event) {
+        publisher.post(event);
     }
     
-    public void postEvent(@NonNull final Object event) {
-        executorService.execute(new Runnable() {
-            @Override
-            public void run() {
-                publisher.post(event);
-            }
-        });
+    public void postEventOnBackground(@NonNull Object event) {
+        executorService.execute(new EventRunnable(event));
+    }
+    
+    private class EventRunnable implements Runnable {
+        private Object event;
+
+        EventRunnable(Object event) {
+            this.event = event;
+        }
+
+        @Override
+        public void run() {
+            publisher.post(event);
+        }
     }
     
     /**
