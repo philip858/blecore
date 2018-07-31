@@ -56,6 +56,7 @@ public class Connection extends BaseConnection {
     private int reconnectImmediatelyCount;//不搜索，直接连接次数
     private int transport = -1;//传输模式
     private boolean refreshing;
+    private boolean isActiveDisconnect;
 	    
     private Connection(BluetoothDevice bluetoothDevice) {
         super(bluetoothDevice);
@@ -261,8 +262,8 @@ public class Connection extends BaseConnection {
     
     private void doTimer() {
         if (!isReleased) {
-            //只处理不在连接状态的
-            if (device.connectionState != STATE_SERVICE_DISCOVERED && !refreshing) {
+            //只处理不在连接状态的、不在刷新、不是主动断开
+            if (device.connectionState != STATE_SERVICE_DISCOVERED && !refreshing && !isActiveDisconnect) {
                 if (device.connectionState != STATE_DISCONNECTED) {
                     //超时
                     if (System.currentTimeMillis() - connStartTime > Ble.getInstance().getConfiguration().getConnectTimeoutMillis()) {
@@ -410,6 +411,7 @@ public class Connection extends BaseConnection {
     
     public void reconnect() {
 	    if (!isReleased) {
+	        isActiveDisconnect = false;
             tryReconnectTimes = 0;
             reconnectImmediatelyCount = 0;
             Message.obtain(handler, MSG_DISCONNECT, MSG_ARG_RECONNECT).sendToTarget();
@@ -418,7 +420,7 @@ public class Connection extends BaseConnection {
 
     public void disconnect() {
         if (!isReleased) {
-            handler.removeMessages(MSG_TIMER);//主动断开，停止定时器
+            isActiveDisconnect = true;
             Message.obtain(handler, MSG_DISCONNECT, MSG_ARG_NONE).sendToTarget();
         }
 	}
