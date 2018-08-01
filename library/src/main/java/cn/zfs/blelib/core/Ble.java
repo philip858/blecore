@@ -114,12 +114,17 @@ public class Ble {
      * @param context 上下文
      * @param callback 初始化结果回调
      */
-    public void initialize(@NonNull Context context, InitCallback callback) {
+    public void initialize(@NonNull Context context, final InitCallback callback) {
         context = context.getApplicationContext();
         //检查手机是否支持BLE
         if (!context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
             if (callback != null) {
-                callback.onFail(InitCallback.ERROR_NOT_SUPPORT_BLE);
+                mainThreadHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.onFail(InitCallback.ERROR_NOT_SUPPORT_BLE);
+                    }
+                });
             }
             return;
         }
@@ -127,7 +132,12 @@ public class Ble {
         BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         if (bluetoothManager == null) {
             if (callback != null) {
-                callback.onFail(InitCallback.ERROR_INIT_FAIL);
+                mainThreadHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.onFail(InitCallback.ERROR_INIT_FAIL);
+                    }
+                });
             }
             return;
         }
@@ -135,7 +145,12 @@ public class Ble {
         //检查是否拥有定位权限
         if (noLocationPermission(context)) {
             if (callback != null) {
-                callback.onFail(InitCallback.ERROR_LACK_PERMISSION);
+                mainThreadHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.onFail(InitCallback.ERROR_LACK_PERMISSION);
+                    }
+                });
             }
             return;
         }
@@ -147,8 +162,13 @@ public class Ble {
             context.registerReceiver(receiver, filter);
         }
         isInited = true;        
-        if (callback != null) {
-            callback.onSuccess();
+        if (callback != null) {            
+            mainThreadHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    callback.onSuccess();
+                }
+            });
         }
     }
 

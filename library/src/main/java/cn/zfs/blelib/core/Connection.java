@@ -120,20 +120,8 @@ public class Connection extends BaseConnection {
     
     public synchronized void onScanStop() {
 	    if (!isReleased && device.connectionState == STATE_RECONNECTING) {
-            postDelayScanBle();
+            doDisconnect(true, false);
         }
-    }
-
-    private void postDelayScanBle() {
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                if (!isReleased) {
-                    //开启扫描，扫描到才连接
-                    Ble.getInstance().startScan(context);
-                }
-            }
-        }, 2000);
     }
 
     private static class ConnHandler extends Handler {
@@ -382,7 +370,15 @@ public class Connection extends BaseConnection {
             Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "RECONNECTING [name: %s, mac: %s]", device.name, device.addr));
             connStartTime = System.currentTimeMillis();
             Ble.getInstance().stopScan();
-            postDelayScanBle();
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (!isReleased) {
+                        //开启扫描，扫描到才连接
+                        Ble.getInstance().startScan(context);
+                    }
+                }
+            }, 2000);
         }
     }
 
