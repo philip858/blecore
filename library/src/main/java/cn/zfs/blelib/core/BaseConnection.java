@@ -37,9 +37,11 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
     protected BluetoothAdapter bluetoothAdapter;
     protected boolean isReleased;
     private TimeoutHandler handler;
+    protected ConnectionConfig config;
 
-    BaseConnection(BluetoothDevice bluetoothDevice) {
+    BaseConnection(BluetoothDevice bluetoothDevice, ConnectionConfig config) {
         this.bluetoothDevice = bluetoothDevice;
+        this.config = config;
         handler = new TimeoutHandler(this);
     }
     
@@ -386,10 +388,10 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
 
     private void executeWriteCharacteristic(BluetoothGattCharacteristic characteristic, Request request) {
         try {
-            request.waitWriteResult = Ble.getInstance().getConfiguration().isWaitWriteResult();
-            request.writeDelay = Ble.getInstance().getConfiguration().getPackageWriteDelayMillis();
-            int packSize = Ble.getInstance().getConfiguration().getPackageSize();
-            int requestWriteDelayMillis = Ble.getInstance().getConfiguration().getRequestWriteDelayMillis();
+            request.waitWriteResult = config.waitWriteResult;
+            request.writeDelay = config.packageWriteDelayMillis;
+            int packSize = config.packageSize;
+            int requestWriteDelayMillis = config.requestWriteDelayMillis;
             Thread.sleep(requestWriteDelayMillis > 0 ? requestWriteDelayMillis : request.writeDelay);
             if (request.value.length > packSize) {
                 List<byte[]> list = BleUtils.splitPackage(request.value, packSize);  
@@ -432,7 +434,7 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
 
     private boolean writeFail(BluetoothGattCharacteristic characteristic, byte[] value) {
         characteristic.setValue(value);
-        Integer writeType = Ble.getInstance().getConfiguration().getWriteType(characteristic.getService().getUuid(), characteristic.getUuid());
+        Integer writeType = config.getWriteType(characteristic.getService().getUuid(), characteristic.getUuid());
         if (writeType != null && (writeType == BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT || writeType == BluetoothGattCharacteristic.WRITE_TYPE_SIGNED ||
                 writeType == BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)) {
             characteristic.setWriteType(writeType);

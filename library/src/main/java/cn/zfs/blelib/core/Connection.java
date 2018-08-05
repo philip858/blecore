@@ -49,28 +49,25 @@ public class Connection extends BaseConnection {
 	private Context context;
 	private ConnectionStateChangeListener stateChangeListener;
 	private long connStartTime;
-    private boolean autoReconnEnable = true;//重连控制
 	private int refreshTimes;//记录刷新次数，如果成功发现服务器，则清零
     private int tryReconnectTimes;//尝试重连次数
     private int lastConnectState = -1;
     private int reconnectImmediatelyCount;//不搜索，直接连接次数
-    private int transport = -1;//传输模式
     private boolean refreshing;
-    private boolean isActiveDisconnect;
+    private boolean isActiveDisconnect;    
 	    
-    private Connection(BluetoothDevice bluetoothDevice) {
-        super(bluetoothDevice);
-        handler = new ConnHandler(this);
+    private Connection(BluetoothDevice bluetoothDevice, ConnectionConfig config) {
+        super(bluetoothDevice, config);
+        handler = new ConnHandler(this);        
     }
 
     /**
      * 连接
      * @param device 蓝牙设备
-     * @param transport 连接时的传输模式，只在6.0以上系统有效。
      * {@link BluetoothDevice#TRANSPORT_AUTO}<br>{@link BluetoothDevice#TRANSPORT_BREDR}<br>{@link BluetoothDevice#TRANSPORT_LE}              
      */
     synchronized static Connection newInstance(@NonNull BluetoothAdapter bluetoothAdapter, @NonNull Context context, @NonNull Device device,
-                                               int transport, long connectDelay, ConnectionStateChangeListener stateChangeListener) {
+                                               ConnectionConfig config, long connectDelay, ConnectionStateChangeListener stateChangeListener) {
         if (device.addr == null || !device.addr.matches("^[0-9A-F]{2}(:[0-9A-F]{2}){5}$")) {
             Ble.println(Connection.class, Log.ERROR, String.format(Locale.US, "CONNECT FAILED [type: unspecified mac address, name: %s, mac: %s]",
                     device.name, device.addr));
@@ -78,12 +75,14 @@ public class Connection extends BaseConnection {
             return null;
         }
         //初始化并建立连接
-        Connection conn = new Connection(bluetoothAdapter.getRemoteDevice(device.addr));
+        if (config == null) {
+            config = ConnectionConfig.newInstance();
+        }
+        Connection conn = new Connection(bluetoothAdapter.getRemoteDevice(device.addr), config);
         conn.bluetoothAdapter = bluetoothAdapter;
         conn.device = device;
         conn.context = context.getApplicationContext();
         conn.stateChangeListener = stateChangeListener;
-        conn.transport = transport;
         //连接蓝牙设备
         conn.connStartTime = System.currentTimeMillis();
         conn.handler.sendEmptyMessageDelayed(MSG_CONNECT, connectDelay);//连接
@@ -100,6 +99,13 @@ public class Connection extends BaseConnection {
     
     public BluetoothGatt getBluetoothGatt() {
         return bluetoothGatt;
+    }
+
+    /**
+     * 获取当前连接的配置
+     */
+    public ConnectionConfig getConfig() {
+        return config;
     }
 
     /**
@@ -153,7 +159,7 @@ public class Connection extends BaseConnection {
                         conn.doRefresh(true);
                         break;
                     case MSG_RELEASE://销毁连接
-                        conn.autoReconnEnable = false;//停止重连
+                        conn.config.autoReconnect = false;//停止重连
                         conn.doDisconnect(false, msg.arg1 == MSG_ARG_NOTIFY);
                         break;
                     case MSG_TIMER://定时器
@@ -198,10 +204,10 @@ public class Connection extends BaseConnection {
                 device.connectionState = STATE_CONNECTED;
                 sendConnectionCallback();
                 // 进行服务发现，延时
-                handler.sendEmptyMessageDelayed(MSG_DISCOVER_SERVICES, Ble.getInstance().getConfiguration().getDiscoverServicesDelayMillis());
+                handler.sendEmptyMessageDelayed(MSG_DISCOVER_SERVICES, config.discoverServicesDelayMillis);
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "DISCONNECTED [name: %s, mac: %s, autoReconnEnable: %s]",
-                        gatt.getDevice().getName(), gatt.getDevice().getAddress(), String.valueOf(autoReconnEnable)));
+                        gatt.getDevice().getName(), gatt.getDevice().getAddress(), String.valueOf(config.autoReconnect)));
                 clearRequestQueue();
                 notifyDisconnected();
             }
@@ -254,7 +260,7 @@ public class Connection extends BaseConnection {
             if (device.connectionState != STATE_SERVICE_DISCOVERED && !refreshing && !isActiveDisconnect) {
                 if (device.connectionState != STATE_DISCONNECTED) {
                     //超时
-                    if (System.currentTimeMillis() - connStartTime > Ble.getInstance().getConfiguration().getConnectTimeoutMillis()) {
+                    if (System.currentTimeMillis() - connStartTime > config.connectTimeoutMillis) {
                         connStartTime = System.currentTimeMillis();
                         Ble.println(Connection.class, Log.ERROR, String.format(Locale.US, "CONNECT TIMEOUT [name: %s, mac: %s]", device.name, device.addr));
                         int type;
@@ -266,8 +272,7 @@ public class Connection extends BaseConnection {
                             type = TIMEOUT_TYPE_CANNOT_DISCOVER_SERVICES;
                         }
                         Ble.getInstance().postEvent(Events.newConnectTimeout(device, type));
-                        if (autoReconnEnable && (Ble.getInstance().getConfiguration().getTryReconnectTimes() == Configuration.TRY_RECONNECT_TIMES_INFINITE ||
-                                tryReconnectTimes < Ble.getInstance().getConfiguration().getTryReconnectTimes())) {
+                        if (config.autoReconnect && (config.tryReconnectTimes == ConnectionConfig.TRY_RECONNECT_TIMES_INFINITE || tryReconnectTimes < config.tryReconnectTimes)) {
                             doDisconnect(true, true);
                         } else {
                             doDisconnect(false, true);
@@ -276,7 +281,7 @@ public class Connection extends BaseConnection {
                                     device.name, device.addr));
                         }
                     }                
-                } else if (autoReconnEnable) {
+                } else if (config.autoReconnect) {
                     doDisconnect(true, true);
                 }
             }
@@ -328,7 +333,7 @@ public class Connection extends BaseConnection {
                 if (!isReleased) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                         bluetoothGatt = bluetoothDevice.connectGatt(context, false, Connection.this,
-                                transport == -1 ? BluetoothDevice.TRANSPORT_LE : transport);
+                                config.transport == -1 ? BluetoothDevice.TRANSPORT_LE : config.transport);
                     } else {
                         bluetoothGatt = bluetoothDevice.connectGatt(context, false, Connection.this);
                     }
@@ -351,7 +356,7 @@ public class Connection extends BaseConnection {
             Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "CONNECTION RELEASED [name: %s, mac: %s]", device.name, device.addr));
         } else if (reconnect) {
             tryReconnectTimes++;
-            if (reconnectImmediatelyCount < Ble.getInstance().getConfiguration().getReconnectImmediatelyTimes()) {
+            if (reconnectImmediatelyCount < config.reconnectImmediatelyTimes) {
                 reconnectImmediatelyCount++;
                 connStartTime = System.currentTimeMillis();
                 doConnect();
@@ -398,11 +403,11 @@ public class Connection extends BaseConnection {
     }
     
     void setAutoReconnectEnable(boolean enable) {
-        autoReconnEnable = enable;
+        config.autoReconnect = enable;
     }
 
     boolean isAutoReconnectEnabled() {
-        return autoReconnEnable;
+        return config.autoReconnect;
     }
     
     public void reconnect() {
@@ -445,7 +450,7 @@ public class Connection extends BaseConnection {
         Message.obtain(handler, MSG_RELEASE, MSG_ARG_NONE, 0).sendToTarget();
     }
 	
-    public int getConnState() {
+    public int getConnctionState() {
 		return device.connectionState;
 	}
 	

@@ -34,29 +34,29 @@ class MainActivity : CheckPermissionsActivity() {
         initViews()     
         Ble.getInstance().setLogPrintLevel(BleLogger.ALL)//输出日志
         Ble.getInstance().addScanListener(scanListener)
-        Ble.getInstance().configuration.isAcceptSysConnectedDevice = false
-        Ble.getInstance().configuration.isUseBluetoothLeScanner = PreferencesUtils.getBoolean(Consts.SP_KEY_USE_NEW_SCANNER, true)
+        Ble.getInstance().bleConfig.isAcceptSysConnectedDevice = false
+        Ble.getInstance().bleConfig.isUseBluetoothLeScanner = PreferencesUtils.getBoolean(Consts.SP_KEY_USE_NEW_SCANNER, true)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            Ble.getInstance().configuration.scanSettings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
+            Ble.getInstance().bleConfig.scanSettings = ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
         }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.main, menu)
-        menu?.findItem(R.id.menuOld)?.isVisible = Ble.getInstance().configuration.isUseBluetoothLeScanner
-        menu?.findItem(R.id.menuNew)?.isVisible = !Ble.getInstance().configuration.isUseBluetoothLeScanner
-        ToastUtils.showShort("当前使用的是: ${if (Ble.getInstance().configuration.isUseBluetoothLeScanner) "新" else "旧"}扫描器")
+        menu?.findItem(R.id.menuOld)?.isVisible = Ble.getInstance().bleConfig.isUseBluetoothLeScanner
+        menu?.findItem(R.id.menuNew)?.isVisible = !Ble.getInstance().bleConfig.isUseBluetoothLeScanner
+        ToastUtils.showShort("当前使用的是: ${if (Ble.getInstance().bleConfig.isUseBluetoothLeScanner) "新" else "旧"}扫描器")
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem?): Boolean {
         when (item?.itemId) {
             R.id.menuOld -> {//使用旧扫描器
-                Ble.getInstance().configuration.isUseBluetoothLeScanner = false
+                Ble.getInstance().bleConfig.isUseBluetoothLeScanner = false
                 PreferencesUtils.putBoolean(Consts.SP_KEY_USE_NEW_SCANNER, false)
             }
             R.id.menuNew -> {//使用新扫描器
-                Ble.getInstance().configuration.isUseBluetoothLeScanner = true
+                Ble.getInstance().bleConfig.isUseBluetoothLeScanner = true
                 PreferencesUtils.putBoolean(Consts.SP_KEY_USE_NEW_SCANNER, true)
             }
         }

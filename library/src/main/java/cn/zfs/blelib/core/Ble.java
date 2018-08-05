@@ -52,7 +52,7 @@ public class Ble {
     private BluetoothLeScanner bleScanner;
     private ScanCallback scanCallback;
     private BluetoothAdapter.LeScanCallback leScanCallback;    
-    private Configuration configuration;
+    private BleConfig bleConfig;
     private List<ScanListener> scanListeners;
     private Handler mainThreadHandler;
     private EventBus publisher;
@@ -60,7 +60,7 @@ public class Ble {
     private ExecutorService executorService;
 
     private Ble() {
-        configuration = new Configuration();
+        bleConfig = new BleConfig();
         connectionMap = new ConcurrentHashMap<>();
         mainThreadHandler = new Handler(Looper.getMainLooper());
         scanListeners = new ArrayList<>();
@@ -98,15 +98,15 @@ public class Ble {
         Ble.getInstance().logger.println("blelib:" + cls.getSimpleName(), priority, "blelib--" + msg);
     }
     
-    public Configuration getConfiguration() {
-        return configuration;
+    public BleConfig getBleConfig() {
+        return bleConfig;
     }
 
     /**
      * 替换默认配置
      */
-    public void setConfiguration(@NonNull Configuration configuration) {
-        this.configuration = configuration;
+    public void setBleConfig(@NonNull BleConfig bleConfig) {
+        this.bleConfig = bleConfig;
     }
     
     /**
@@ -309,21 +309,21 @@ public class Ble {
             scanning = true;
         }        
         handleScanCallback(true, null);
-        if (configuration.isAcceptSysConnectedDevice()) {
+        if (bleConfig.isAcceptSysConnectedDevice()) {
             getSystemConnectedDevices();
         }
         //如果是高版本使用新的搜索方法
-        if (configuration.isUseBluetoothLeScanner() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        if (bleConfig.isUseBluetoothLeScanner() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             if (bleScanner == null) {
                 bleScanner = bluetoothAdapter.getBluetoothLeScanner();
             }
             if (scanCallback == null) {
                 scanCallback = new MyScanCallback();
             }
-            if (configuration.getScanSettings() == null) {
+            if (bleConfig.getScanSettings() == null) {
                 bleScanner.startScan(scanCallback);
             } else {
-                bleScanner.startScan(null, configuration.getScanSettings(), scanCallback);
+                bleScanner.startScan(null, bleConfig.getScanSettings(), scanCallback);
             }            
         } else {
             if (leScanCallback == null) {
@@ -331,7 +331,7 @@ public class Ble {
             }
             bluetoothAdapter.startLeScan(leScanCallback);
         }
-        mainThreadHandler.postDelayed(stopScanRunnable, configuration.getScanPeriodMillis());
+        mainThreadHandler.postDelayed(stopScanRunnable, bleConfig.getScanPeriodMillis());
     }
 
     private void handleScanCallback(final boolean start, final Device device) {
@@ -436,11 +436,11 @@ public class Ble {
         String deviceName = TextUtils.isEmpty(device.getName()) ? "Unknown Device" : device.getName();
         //生成
         Device dev = null;
-        if (configuration.getScanHandler() != null) {
+        if (bleConfig.getScanHandler() != null) {
             //只在指定的过滤器通知
-            dev = configuration.getScanHandler().handle(device, scanRecord);
+            dev = bleConfig.getScanHandler().handle(device, scanRecord);
         }
-        if (dev != null || configuration.getScanHandler() == null) {
+        if (dev != null || bleConfig.getScanHandler() == null) {
             if (dev == null) {
                 dev = new Device();
             }
@@ -454,22 +454,13 @@ public class Ble {
         }
         println(Ble.class, Log.DEBUG, String.format(Locale.US, "FOUND DEVICE [name: %s, mac: %s]", deviceName, device.getAddress()));
     }
-            
+    
     /**
      * 建立连接
-     * @param autoReconnect 是否断线自动重连
-     */
-    public synchronized void connect(@NonNull Context context, @NonNull Device device, boolean autoReconnect, ConnectionStateChangeListener listener) {
-        connect(context, device, -1, autoReconnect, listener);
-    }
-
-    /**
-     * 建立连接
-     * @param autoReconnect 是否断线自动重连
-     * @param transport 连接时的传输模式，只在6.0以上系统有效。
+     * @param config 连接配置
      * {@link BluetoothDevice#TRANSPORT_AUTO}<br>{@link BluetoothDevice#TRANSPORT_BREDR}<br>{@link BluetoothDevice#TRANSPORT_LE}  
      */
-    public synchronized void connect(@NonNull Context context, @NonNull Device device, int transport, boolean autoReconnect, ConnectionStateChangeListener listener) {
+    public synchronized void connect(@NonNull Context context, @NonNull Device device, ConnectionConfig config, ConnectionStateChangeListener listener) {
         if (!isInited) {
             return;
         }
@@ -478,20 +469,19 @@ public class Ble {
         if (connection != null) {
             connection.releaseNoEvnet();
         }
-        IBondController bondController = configuration.getBondController();
+        IBondController bondController = bleConfig.getBondController();
         if (bondController != null && bondController.bond(device)) {
             BluetoothDevice bd = bluetoothAdapter.getRemoteDevice(device.addr);
             if (bd.getBondState() == BluetoothDevice.BOND_BONDED) {
-                connection = Connection.newInstance(bluetoothAdapter, context, device, transport, 0, listener);
+                connection = Connection.newInstance(bluetoothAdapter, context, device, config, 0, listener);
             } else {
                 createBond(device.addr);//配对
-                connection = Connection.newInstance(bluetoothAdapter, context, device, transport, 1500, listener);
+                connection = Connection.newInstance(bluetoothAdapter, context, device, config, 1500, listener);
             }
         } else {
-            connection = Connection.newInstance(bluetoothAdapter, context, device, transport, 0, listener);
+            connection = Connection.newInstance(bluetoothAdapter, context, device, config, 0, listener);
         }
         if (connection != null) {
-            connection.setAutoReconnectEnable(autoReconnect);
             connectionMap.put(device.addr, connection);
         }
     }
@@ -518,7 +508,7 @@ public class Ble {
      */
     public int getConnectionState(Device device) {
         Connection connection = getConnection(device);
-        return connection == null ? Connection.STATE_DISCONNECTED : connection.getConnState();
+        return connection == null ? Connection.STATE_DISCONNECTED : connection.getConnctionState();
     }
 
     /**
@@ -569,7 +559,7 @@ public class Ble {
      */
     public void reconnectAll() {
         for (Connection connection : connectionMap.values()) {
-            if (connection.getConnState() != Connection.STATE_SERVICE_DISCOVERED) {
+            if (connection.getConnctionState() != Connection.STATE_SERVICE_DISCOVERED) {
                 connection.reconnect();
             }
         }
@@ -581,7 +571,7 @@ public class Ble {
     public void reconnect(Device device) {
         if (isInited && device != null) {
             Connection connection = connectionMap.get(device.addr);
-            if (connection != null && connection.getConnState() != Connection.STATE_SERVICE_DISCOVERED) {
+            if (connection != null && connection.getConnctionState() != Connection.STATE_SERVICE_DISCOVERED) {
                 connection.reconnect();
             }
         }
