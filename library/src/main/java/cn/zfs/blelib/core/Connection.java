@@ -504,7 +504,7 @@ public class Connection extends BaseConnection {
 
     @Override
     public void onRequestFialed(@NonNull String requestId, @NonNull Request.RequestType requestType, int failType, byte[] value) {
-        Ble.getInstance().postEvent(Events.newRequestFailed(requestId, requestType, failType, value));
+        Ble.getInstance().postEvent(Events.newRequestFailed(device, requestId, requestType, failType, value));
         Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "REQUEST FAILED [mac: %s, requestId: %s, failType: %d]", device.addr, requestId, failType));
     }
 

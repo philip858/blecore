@@ -192,8 +192,11 @@ public class Events {
     /**
      * 请求失败事件，如读特征值、写特征值、开启notification等等
      */
-    public static class RequestFailed extends RequestIdEvent {
-
+    public static class RequestFailed {
+        @NonNull
+        public Device device;
+        @NonNull
+        public String requestId;
         @NonNull
         public Request.RequestType requestType;
         /** 请求时带的数据 */
@@ -206,8 +209,8 @@ public class Events {
          */
         public int failType;
 
-        private RequestFailed(@NonNull String requestId, @NonNull Request.RequestType requestType, int failType, byte[] src) {
-            super(requestId);
+        private RequestFailed(@NonNull Device device, @NonNull String requestId, @NonNull Request.RequestType requestType, int failType, byte[] src) {
+            this.device = device;
             this.requestId = requestId;
             this.requestType = requestType;
             this.failType = failType;
@@ -276,8 +279,8 @@ public class Events {
         return new RemoteRssiRead(device, requestId, rssi);
     }
 
-    public static RequestFailed newRequestFailed(@NonNull String requestId, @NonNull Request.RequestType requestType, int failType, byte[] src) {
-        return new RequestFailed(requestId, requestType, failType, src);
+    public static RequestFailed newRequestFailed(@NonNull Device device, @NonNull String requestId, @NonNull Request.RequestType requestType, int failType, byte[] src) {
+        return new RequestFailed(device, requestId, requestType, failType, src);
     }
     
     public static LogChanged newLogChanged(String log, int level) {
