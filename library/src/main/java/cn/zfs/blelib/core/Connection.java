@@ -144,42 +144,46 @@ public class Connection extends BaseConnection {
             if (conn == null || (conn.isReleased && msg.what != MSG_RELEASE)) {
                 return;
             }
-            if (conn.bluetoothAdapter.isEnabled()) {
-                switch(msg.what) {
-                    case MSG_CONNECT://连接
+            switch(msg.what) {
+                case MSG_CONNECT://连接
+                    if (conn.bluetoothAdapter.isEnabled()) {
                         conn.doConnect();
-                		break;
-                    case MSG_DISCONNECT://处理断开
-                        conn.doDisconnect(msg.arg1 == MSG_ARG_RECONNECT, true);
-                		break;
-                    case MSG_REFRESH://手动刷新
-                        conn.doRefresh(false);
-                        break;
-                    case MSG_AUTO_REFRESH://自动刷新
-                        conn.doRefresh(true);
-                        break;
-                    case MSG_RELEASE://销毁连接
-                        conn.config.autoReconnect = false;//停止重连
-                        conn.doDisconnect(false, msg.arg1 == MSG_ARG_NOTIFY);
-                        break;
-                    case MSG_TIMER://定时器
-                        conn.doTimer();
-                        break;
-                    case MSG_DISCOVER_SERVICES://开始发现服务
-                        conn.doDiscoverServices();
-                        break;
-                    case MSG_ON_CONNECTION_STATE_CHANGE://连接状态变化
-                    case MSG_ON_SERVICES_DISCOVERED://发现服务
-                        BluetoothGatt gatt = (BluetoothGatt) msg.obj;
-                        int status = msg.arg1;
-                        int newState = msg.arg2;
-                        if (msg.what == MSG_ON_SERVICES_DISCOVERED) {
-                            conn.doOnServicesDiscovered(gatt, status);
+                    }
+                    break;
+                case MSG_DISCONNECT://处理断开
+                    conn.doDisconnect(msg.arg1 == MSG_ARG_RECONNECT && conn.bluetoothAdapter.isEnabled(), true);
+                    break;
+                case MSG_REFRESH://手动刷新
+                    conn.doRefresh(false);
+                    break;
+                case MSG_AUTO_REFRESH://自动刷新
+                    conn.doRefresh(true);
+                    break;
+                case MSG_RELEASE://销毁连接
+                    conn.config.autoReconnect = false;//停止重连
+                    conn.doDisconnect(false, msg.arg1 == MSG_ARG_NOTIFY);
+                    break;
+                case MSG_TIMER://定时器
+                    conn.doTimer();
+                    break;
+                case MSG_DISCOVER_SERVICES://开始发现服务
+                case MSG_ON_CONNECTION_STATE_CHANGE://连接状态变化
+                case MSG_ON_SERVICES_DISCOVERED://发现服务
+                    if (conn.bluetoothAdapter.isEnabled()) {
+                        if (msg.what == MSG_DISCOVER_SERVICES) {
+                            conn.doDiscoverServices();
                         } else {
-                            conn.doOnConnectionStateChange(gatt, status, newState);
+                            BluetoothGatt gatt = (BluetoothGatt) msg.obj;
+                            int status = msg.arg1;
+                            int newState = msg.arg2;
+                            if (msg.what == MSG_ON_SERVICES_DISCOVERED) {
+                                conn.doOnServicesDiscovered(gatt, status);
+                            } else {
+                                conn.doOnConnectionStateChange(gatt, status, newState);
+                            }                            
                         }
-                        break;
-                }
+                    }
+                    break;
             }
         }
     }

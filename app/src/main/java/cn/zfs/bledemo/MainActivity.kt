@@ -68,6 +68,11 @@ class MainActivity : CheckPermissionsActivity() {
         refreshLayout.setColorSchemeColors(ContextCompat.getColor(this, R.color.colorAccent))
         listAdapter = ListAdapter(this, devList)
         lv.adapter = listAdapter
+        lv.setOnItemClickListener { _, _, position, _ ->
+            val i = Intent(this, ConnectionActivity::class.java)
+            i.putExtra(Consts.EXTRA_DEVICE, devList[position])
+            startActivity(i)
+        }
         refreshLayout.setOnRefreshListener {
             if (Ble.getInstance().isInitialized) {
                 Ble.getInstance().stopScan()
