@@ -150,7 +150,7 @@ public class Connection extends BaseConnection {
                         conn.doConnect();
                 		break;
                     case MSG_DISCONNECT://处理断开
-                        conn.doDisconnect(msg.arg2 == MSG_ARG_RECONNECT, true);
+                        conn.doDisconnect(msg.arg1 == MSG_ARG_RECONNECT, true);
                 		break;
                     case MSG_REFRESH://手动刷新
                         conn.doRefresh(false);
@@ -415,14 +415,14 @@ public class Connection extends BaseConnection {
 	        isActiveDisconnect = false;
             tryReconnectTimes = 0;
             reconnectImmediatelyCount = 0;
-            Message.obtain(handler, MSG_DISCONNECT, MSG_ARG_RECONNECT).sendToTarget();
+            Message.obtain(handler, MSG_DISCONNECT, MSG_ARG_RECONNECT, 0).sendToTarget();
 	    }
 	}
 
     public void disconnect() {
         if (!isReleased) {
             isActiveDisconnect = true;
-            Message.obtain(handler, MSG_DISCONNECT, MSG_ARG_NONE).sendToTarget();
+            Message.obtain(handler, MSG_DISCONNECT, MSG_ARG_NONE, 0).sendToTarget();
         }
 	}
 	
