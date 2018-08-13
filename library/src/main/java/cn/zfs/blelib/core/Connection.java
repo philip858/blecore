@@ -125,9 +125,7 @@ public class Connection extends BaseConnection {
     }
     
     public synchronized void onScanStop() {
-	    if (!isReleased && device.connectionState == STATE_RECONNECTING) {
-            doDisconnect(true, false);
-        }
+	    
     }
 
     private static class ConnHandler extends Handler {
