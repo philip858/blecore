@@ -171,13 +171,10 @@ public class Connection extends BaseConnection {
                         if (msg.what == MSG_DISCOVER_SERVICES) {
                             conn.doDiscoverServices();
                         } else {
-                            BluetoothGatt gatt = (BluetoothGatt) msg.obj;
-                            int status = msg.arg1;
-                            int newState = msg.arg2;
                             if (msg.what == MSG_ON_SERVICES_DISCOVERED) {
-                                conn.doOnServicesDiscovered(gatt, status);
+                                conn.doOnServicesDiscovered(msg.arg1);
                             } else {
-                                conn.doOnConnectionStateChange(gatt, status, newState);
+                                conn.doOnConnectionStateChange(msg.arg1, msg.arg2);
                             }                            
                         }
                     }
@@ -198,52 +195,56 @@ public class Connection extends BaseConnection {
         Ble.getInstance().postEvent(Events.newConnectFailed(device, type));
     }
     
-    private void doOnConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-        if (status == BluetoothGatt.GATT_SUCCESS) {
-            if (newState == BluetoothProfile.STATE_CONNECTED) {
-                Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "CONNECTED [name: %s, mac: %s]",
-                        gatt.getDevice().getName(), gatt.getDevice().getAddress()));
-                device.connectionState = STATE_CONNECTED;
-                sendConnectionCallback();
-                // 进行服务发现，延时
-                handler.sendEmptyMessageDelayed(MSG_DISCOVER_SERVICES, config.discoverServicesDelayMillis);
-            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "DISCONNECTED [name: %s, mac: %s, autoReconnEnable: %s]",
-                        gatt.getDevice().getName(), gatt.getDevice().getAddress(), String.valueOf(config.autoReconnect)));
-                clearRequestQueue();
-                notifyDisconnected();
-            }
-        } else {
-            Ble.println(Connection.class, Log.ERROR, String.format(Locale.US, "GATT ERROR [name: %s, mac: %s, status: %d]",
-                    gatt.getDevice().getName(), gatt.getDevice().getAddress(), status));
-            if (status == 133) {
-                doClearTaskAndRefresh();
+    private void doOnConnectionStateChange(int status, int newState) {
+        if (bluetoothGatt != null) {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                if (newState == BluetoothProfile.STATE_CONNECTED) {
+                    Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "CONNECTED [name: %s, mac: %s]",
+                            bluetoothGatt.getDevice().getName(), bluetoothGatt.getDevice().getAddress()));
+                    device.connectionState = STATE_CONNECTED;
+                    sendConnectionCallback();
+                    // 进行服务发现，延时
+                    handler.sendEmptyMessageDelayed(MSG_DISCOVER_SERVICES, config.discoverServicesDelayMillis);
+                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                    Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "DISCONNECTED [name: %s, mac: %s, autoReconnEnable: %s]",
+                            bluetoothGatt.getDevice().getName(), bluetoothGatt.getDevice().getAddress(), String.valueOf(config.autoReconnect)));
+                    clearRequestQueue();
+                    notifyDisconnected();
+                }
             } else {
-                clearRequestQueue();
-                notifyDisconnected();
+                Ble.println(Connection.class, Log.ERROR, String.format(Locale.US, "GATT ERROR [name: %s, mac: %s, status: %d]",
+                        bluetoothGatt.getDevice().getName(), bluetoothGatt.getDevice().getAddress(), status));
+                if (status == 133) {
+                    doClearTaskAndRefresh();
+                } else {
+                    clearRequestQueue();
+                    notifyDisconnected();
+                }
             }
-        }
+        }        
     }
     
-    private void doOnServicesDiscovered(BluetoothGatt gatt, int status) {        
-        List<BluetoothGattService> services = gatt.getServices();
-        if (status == BluetoothGatt.GATT_SUCCESS) {
-            Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "SERVICES DISCOVERED [name: %s, mac: %s, size: %d]",
-                    gatt.getDevice().getName(), gatt.getDevice().getAddress(), gatt.getServices().size()));
-            if (services.isEmpty()) {
-                doClearTaskAndRefresh();
+    private void doOnServicesDiscovered(int status) {  
+        if (bluetoothGatt != null) {
+            List<BluetoothGattService> services = bluetoothGatt.getServices();
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "SERVICES DISCOVERED [name: %s, mac: %s, size: %d]",
+                        bluetoothGatt.getDevice().getName(), bluetoothGatt.getDevice().getAddress(), bluetoothGatt.getServices().size()));
+                if (services.isEmpty()) {
+                    doClearTaskAndRefresh();
+                } else {
+                    refreshTimes = 0;
+                    tryReconnectTimes = 0;
+                    reconnectImmediatelyCount = 0;
+                    device.connectionState = STATE_SERVICE_DISCOVERED;
+                    sendConnectionCallback();
+                }
             } else {
-                refreshTimes = 0;
-                tryReconnectTimes = 0;
-                reconnectImmediatelyCount = 0;
-                device.connectionState = STATE_SERVICE_DISCOVERED;
-                sendConnectionCallback();
+                doClearTaskAndRefresh();
+                Ble.println(Connection.class, Log.ERROR, String.format(Locale.US, "GATT ERROR [status: %d, name: %s, mac: %s]",
+                        status, bluetoothGatt.getDevice().getName(), bluetoothGatt.getDevice().getAddress()));
             }
-        } else {
-            doClearTaskAndRefresh();
-            Ble.println(Connection.class, Log.ERROR, String.format(Locale.US, "GATT ERROR [status: %d, name: %s, mac: %s]",
-                    status, gatt.getDevice().getName(), gatt.getDevice().getAddress()));
-        }
+        }        
     }
     
     private void doDiscoverServices() {
@@ -462,7 +463,7 @@ public class Connection extends BaseConnection {
             gatt.disconnect();
             gatt.close();
         } else {
-            handler.sendMessage(Message.obtain(handler, MSG_ON_CONNECTION_STATE_CHANGE, status, newState, gatt));
+            handler.sendMessage(Message.obtain(handler, MSG_ON_CONNECTION_STATE_CHANGE, status, newState));
         }	    
 	}  
     
@@ -472,7 +473,7 @@ public class Connection extends BaseConnection {
             gatt.disconnect();
             gatt.close();
         } else {
-            handler.sendMessage(Message.obtain(handler, MSG_ON_SERVICES_DISCOVERED, status, 0, gatt));
+            handler.sendMessage(Message.obtain(handler, MSG_ON_SERVICES_DISCOVERED, status, 0));
         }
 	}
 
