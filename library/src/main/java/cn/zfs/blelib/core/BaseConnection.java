@@ -14,9 +14,10 @@ import android.support.annotation.NonNull;
 
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -31,7 +32,7 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
     private static final int MSG_REQUEST_TIMEOUT = 0;
     protected BluetoothDevice bluetoothDevice;
     protected BluetoothGatt bluetoothGatt;
-    protected Queue<Request> requestQueue = new ConcurrentLinkedQueue<>();
+    protected List<Request> requestQueue = new ArrayList<>();
     protected Request currentRequest;
     private BluetoothGattCharacteristic pendingCharacteristic;
     protected BluetoothAdapter bluetoothAdapter;
@@ -46,8 +47,24 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
     }
     
     public void clearRequestQueue() {        
-        requestQueue.clear();
-        currentRequest = null;
+        synchronized (this) {
+            requestQueue.clear();
+            currentRequest = null;
+        }
+    }
+    
+    public void clearRequestQueueByType(Request.RequestType type) {
+        synchronized (this) {
+            for (Iterator<Request> it = requestQueue.iterator(); it.hasNext(); ) {
+                Request request = it.next();
+                if (request.type == type) {
+                    it.remove();
+                }
+            }
+            if (currentRequest != null && currentRequest.type == type) {
+                currentRequest = null;
+            }
+        }
     }
 
     void clearRequestQueueAndNotify() {
@@ -288,7 +305,7 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
             if (requestQueue.isEmpty()) {
                 currentRequest = null;
             } else {
-                executeRequest(requestQueue.remove());
+                executeRequest(requestQueue.remove(0));
             }
         }
     }
