@@ -208,7 +208,7 @@ public class Connection extends BaseConnection {
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                     Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "DISCONNECTED [name: %s, mac: %s, autoReconnEnable: %s]",
                             bluetoothGatt.getDevice().getName(), bluetoothGatt.getDevice().getAddress(), String.valueOf(config.autoReconnect)));
-                    clearRequestQueue();
+                    clearRequestQueueAndNotify();
                     notifyDisconnected();
                 }
             } else {
@@ -217,7 +217,7 @@ public class Connection extends BaseConnection {
                 if (status == 133) {
                     doClearTaskAndRefresh();
                 } else {
-                    clearRequestQueue();
+                    clearRequestQueueAndNotify();
                     notifyDisconnected();
                 }
             }
@@ -346,7 +346,7 @@ public class Connection extends BaseConnection {
     }
     
     private void doDisconnect(boolean reconnect, boolean notify) {
-	    clearRequestQueue();
+        clearRequestQueueAndNotify();
         if (bluetoothGatt != null) {
             bluetoothGatt.disconnect();
             bluetoothGatt.close();
@@ -391,7 +391,7 @@ public class Connection extends BaseConnection {
     }
 
     private void doClearTaskAndRefresh() {
-        clearRequestQueue();
+        clearRequestQueueAndNotify();
         doRefresh(true);       
     }
     

@@ -45,20 +45,24 @@ public abstract class BaseConnection extends BluetoothGattCallback implements IC
         handler = new TimeoutHandler(this);
     }
     
-    public void clearRequestQueue() {
+    public void clearRequestQueue() {        
+        requestQueue.clear();
+        currentRequest = null;
+    }
+
+    void clearRequestQueueAndNotify() {
         for (Request request : requestQueue) {
             handleFaildCallback(request.requestId, request.type, REQUEST_FAIL_TYPE_CONNECTION_DISCONNECTED, request.value, false);
         }
         if (currentRequest != null) {
             handleFaildCallback(currentRequest.requestId, currentRequest.type, REQUEST_FAIL_TYPE_CONNECTION_DISCONNECTED, currentRequest.value, false);
         }
-        requestQueue.clear();
-        currentRequest = null;
+        clearRequestQueue();
     }
-
+    
     public void release() {
         isReleased = true;
-        clearRequestQueue();
+        clearRequestQueueAndNotify();
     }
 
     /*
