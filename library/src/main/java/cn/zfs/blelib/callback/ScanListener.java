@@ -9,6 +9,11 @@ import cn.zfs.blelib.core.Device;
  * 时间: 2018/5/9 00:08
  */
 public interface ScanListener {
+    /** 缺少定位权限 */
+    int ERROR_LACK_LOCATION_PERMISSION = 0;
+    /** 系统位置服务未开启 */
+    int ERROR_LOCATION_SERVICE_CLOSED = 1;
+    
     /**
      * 扫描开始
      */
@@ -24,4 +29,10 @@ public interface ScanListener {
      * @param device 设备
      */
     void onScanResult(@NonNull Device device);
+
+    /**
+     * 扫描错误
+     * @param errorCode {@link #ERROR_LACK_LOCATION_PERMISSION}, {@link #ERROR_LOCATION_SERVICE_CLOSED}
+     */
+    void onScanError(int errorCode, @NonNull String errorMsg);
 }

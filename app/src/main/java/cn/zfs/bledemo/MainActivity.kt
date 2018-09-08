@@ -179,6 +179,10 @@ class MainActivity : CheckPermissionsActivity() {
             layoutEmpty.visibility = View.INVISIBLE
             listAdapter?.add(device)
         }
+
+        override fun onScanError(errorCode: Int, errorMsg: String) {
+            
+        }
     }
     
     override fun onPermissionsRequestResult(hasPermission: Boolean) {
@@ -187,7 +191,7 @@ class MainActivity : CheckPermissionsActivity() {
         }
     }
 
-    override fun onDestroy() {        
+    override fun onDestroy() {    
         Ble.getInstance().release(this)
         super.onDestroy()
         exitProcess(0)

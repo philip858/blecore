@@ -127,6 +127,9 @@ public class Events {
         }
     }
 
+    /**
+     * 读到indicator值
+     */
     public static class DescriptorRead extends BothDeviceAndRequestIdEvent<Device> {
         public GattDescriptor descriptor;
 

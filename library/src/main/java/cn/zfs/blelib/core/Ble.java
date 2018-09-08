@@ -17,6 +17,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.text.TextUtils;
@@ -141,19 +142,6 @@ public class Ble {
             }
             return;
         }
-        //编译版本>=24时需要定位权限，否则扫描不到蓝牙
-        //检查是否拥有定位权限
-        if (noLocationPermission(context)) {
-            if (callback != null) {
-                mainThreadHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        callback.onFail(InitCallback.ERROR_LACK_PERMISSION);
-                    }
-                });
-            }
-            return;
-        }
         bluetoothAdapter = bluetoothManager.getAdapter();
         //未初始化过才注册，保证广播注册和取消注册成对
         if (!isInited) {
@@ -193,7 +181,7 @@ public class Ble {
                     publisher.post(Events.newBluetoothStateChanged(bluetoothAdapter.getState()));
                     if (bluetoothAdapter.getState() == BluetoothAdapter.STATE_OFF) {//蓝牙关闭了
                         scanning = false;
-                        handleScanCallback(false, null);
+                        handleScanCallback(false, null, -1, "");
                         //主动断开
                         for (Connection connection : connectionMap.values()) {
                             connection.disconnect();
@@ -215,6 +203,17 @@ public class Ble {
         return ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(context,
                 Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED;
+    }
+
+    //判断位置服务是否打开
+    private boolean isLocationEnabled(@NonNull Context context) {
+        try {
+            int locationMode = Settings.Secure.getInt(context.getContentResolver(), Settings.Secure.LOCATION_MODE);
+            return locationMode != Settings.Secure.LOCATION_MODE_OFF;
+        } catch (Settings.SettingNotFoundException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
     
     /**
@@ -299,8 +298,12 @@ public class Ble {
      * @param context 用来检查app是否拥有相应权限
      */
     public void startScan(@NonNull Context context) {        
-        if (noLocationPermission(context)) {
-            println(Ble.class, Log.ERROR, "Lack of location permissions, may not scan the bluetooth device.");
+        if (!isLocationEnabled(context)) {
+            handleScanCallback(false, null, ScanListener.ERROR_LOCATION_SERVICE_CLOSED, "位置服务未开启，无法搜索蓝牙设备");
+            return;
+        } else if (noLocationPermission(context)) {
+            handleScanCallback(false, null, ScanListener.ERROR_LACK_LOCATION_PERMISSION, "缺少定位权限，无法搜索蓝牙设备");
+            return;
         }
         synchronized (this) {
             if (!isInited || bluetoothAdapter == null || !bluetoothAdapter.isEnabled() || scanning) {
@@ -308,7 +311,7 @@ public class Ble {
             }
             scanning = true;
         }        
-        handleScanCallback(true, null);
+        handleScanCallback(true, null, -1, "");
         if (bleConfig.isAcceptSysConnectedDevice()) {
             getSystemConnectedDevices();
         }
@@ -334,7 +337,7 @@ public class Ble {
         mainThreadHandler.postDelayed(stopScanRunnable, bleConfig.getScanPeriodMillis());
     }
 
-    private void handleScanCallback(final boolean start, final Device device) {
+    private void handleScanCallback(final boolean start, final Device device, final int errorCode, final String errorMsg) {
         mainThreadHandler.post(new Runnable() {
             @Override
             public void run() {
@@ -343,6 +346,8 @@ public class Ble {
                         listener.onScanResult(device);
                     } else if (start) {
                         listener.onScanStart();
+                    } else if (errorCode >= 0) {
+                        listener.onScanError(errorCode, errorMsg);
                     } else {
                         listener.onScanStop();
                     }
@@ -401,10 +406,7 @@ public class Ble {
         if (leScanCallback != null) {
             bluetoothAdapter.stopLeScan(leScanCallback);
         }
-        handleScanCallback(false, null);
-        for (Connection connection : connectionMap.values()) {
-            connection.onScanStop();
-        }
+        handleScanCallback(false, null, -1, "");
     }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
@@ -450,7 +452,7 @@ public class Ble {
             dev.bondState = device.getBondState();
             dev.originalDevice = device;
             dev.scanRecord = scanRecord;
-            handleScanCallback(false, dev);
+            handleScanCallback(false, dev, -1, "");
         }
         println(Ble.class, Log.DEBUG, String.format(Locale.US, "FOUND DEVICE [name: %s, mac: %s]", deviceName, device.getAddress()));
     }

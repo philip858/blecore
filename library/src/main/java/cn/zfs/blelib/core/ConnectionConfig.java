@@ -23,7 +23,7 @@ public class ConnectionConfig implements Cloneable {
     int requestWriteDelayMillis = -1;
     int packageSize = 20;//发送数据时的分包大小
     boolean waitWriteResult = true;
-    int reconnectImmediatelyTimes = 3;//不搜索，直接通过mac最大连接次数
+    int reconnectImmediatelyTimes = 3;//不搜索，直接通过mac连接的最大连接次数
     private Map<String, Integer> writeTypeMap = new HashMap<>();
     boolean autoReconnect = true;//是否自动重连
     int transport = -1;//传输模式

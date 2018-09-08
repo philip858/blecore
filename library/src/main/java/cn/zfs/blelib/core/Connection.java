@@ -123,10 +123,6 @@ public class Connection extends BaseConnection {
             handler.sendEmptyMessage(MSG_CONNECT);
 	    }
     }
-    
-    public synchronized void onScanStop() {
-	    
-    }
 
     private static class ConnHandler extends Handler {
         private WeakReference<Connection> ref;
@@ -313,6 +309,7 @@ public class Connection extends BaseConnection {
                     if (refreshing) {
                         refreshing = false;
                         bluetoothGatt.close();
+                        bluetoothGatt = null;
                     }
                 }
             }, 2000);
@@ -324,6 +321,7 @@ public class Connection extends BaseConnection {
         if (refreshing) {
             refreshing = false;
             bluetoothGatt.close();
+            bluetoothGatt = null;
         }
         device.connectionState = STATE_CONNECTING;
         sendConnectionCallback();
@@ -350,6 +348,7 @@ public class Connection extends BaseConnection {
         if (bluetoothGatt != null) {
             bluetoothGatt.disconnect();
             bluetoothGatt.close();
+            bluetoothGatt = null;
         }
         device.connectionState = STATE_DISCONNECTED;
         if (isReleased) {//销毁
