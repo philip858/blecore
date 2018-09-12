@@ -1,5 +1,7 @@
 package cn.zfs.blelib.event;
 
+import android.support.annotation.NonNull;
+
 /**
  * 描述: 蓝牙连接事件
  * 使用方法: 在要监听的类中实现接口，并在方法上添加上@Subscribe注解
@@ -10,5 +12,5 @@ public interface IBluetoothStateChangedEvent {
     /**
      * 蓝牙状态变化
      */    
-    void onBluetoothStateChanged(Events.BluetoothStateChanged event);
+    void onBluetoothStateChanged(@NonNull Events.BluetoothStateChanged event);
 }
