@@ -119,7 +119,7 @@ public class Connection extends BaseConnection {
     }
     
     public synchronized void onScanResult(String addr) {
-	    if (!isReleased && device.addr.equals(addr) && device.connectionState == STATE_RECONNECTING) {
+	    if (!isReleased && device.addr.equals(addr) && device.connectionState == STATE_SCANNING) {
             handler.sendEmptyMessage(MSG_CONNECT);
 	    }
     }
@@ -263,7 +263,7 @@ public class Connection extends BaseConnection {
                         connStartTime = System.currentTimeMillis();
                         Ble.println(Connection.class, Log.ERROR, String.format(Locale.US, "CONNECT TIMEOUT [name: %s, mac: %s]", device.name, device.addr));
                         int type;
-                        if (device.connectionState == STATE_RECONNECTING) {
+                        if (device.connectionState == STATE_SCANNING) {
                             type = TIMEOUT_TYPE_CANNOT_DISCOVER_DEVICE;
                         } else if (device.connectionState == STATE_CONNECTING) {
                             type = TIMEOUT_TYPE_CANNOT_CONNECT;
@@ -363,7 +363,6 @@ public class Connection extends BaseConnection {
                 connStartTime = System.currentTimeMillis();
                 doConnect();
             } else {
-                device.connectionState = STATE_RECONNECTING;
                 tryScanReconnect();
             }
         }        
@@ -374,7 +373,6 @@ public class Connection extends BaseConnection {
 
     private void tryScanReconnect() {        
         if (!isReleased) {
-            Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "RECONNECTING [name: %s, mac: %s]", device.name, device.addr));
             connStartTime = System.currentTimeMillis();
             Ble.getInstance().stopScan();
             handler.postDelayed(new Runnable() {
@@ -382,6 +380,8 @@ public class Connection extends BaseConnection {
                 public void run() {
                     if (!isReleased) {
                         //开启扫描，扫描到才连接
+                        device.connectionState = STATE_SCANNING;
+                        Ble.println(Connection.class, Log.DEBUG, String.format(Locale.US, "SCANNING [name: %s, mac: %s]", device.name, device.addr));
                         Ble.getInstance().startScan(context);
                     }
                 }

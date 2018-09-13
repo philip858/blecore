@@ -51,8 +51,8 @@ class ConnectionActivity : AppCompatActivity() {
                 tvState.text = "连接断开"
                 ToastUtils.showShort("连接断开")
             }
-            Connection.STATE_RECONNECTING -> {
-                tvState.text = "正在重连..."
+            Connection.STATE_SCANNING -> {
+                tvState.text = "正在搜索设备..."
             }
             Connection.STATE_SERVICE_DISCOVERING -> {
                 tvState.text = "连接成功，正在发现服务..."
