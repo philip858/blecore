@@ -505,7 +505,7 @@ public class Ble {
     /**
      * 获取连接状态
      * @return {@link Connection#STATE_DISCONNECTED}<br> {@link Connection#STATE_CONNECTING}<br>
-     *              {@link Connection#STATE_RECONNECTING}<br> {@link Connection#STATE_CONNECTED}<br>
+     *              {@link Connection#STATE_SCANNING}<br> {@link Connection#STATE_CONNECTED}<br>
      *              {@link Connection#STATE_SERVICE_DISCOVERING}<br> {@link Connection#STATE_SERVICE_DISCOVERED}
      */
     public int getConnectionState(Device device) {
