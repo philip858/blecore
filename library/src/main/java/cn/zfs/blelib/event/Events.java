@@ -95,7 +95,7 @@ public class Events {
          * 当前连接状态。可能的值：
          * <br>{@link Connection#STATE_DISCONNECTED}
          * <br>{@link Connection#STATE_CONNECTING}
-         * <br>{@link Connection#STATE_RECONNECTING}
+         * <br>{@link Connection#STATE_SCANNING}
          * <br>{@link Connection#STATE_CONNECTED}
          * <br>{@link Connection#STATE_SERVICE_DISCOVERING}
          * <br>{@link Connection#STATE_SERVICE_DISCOVERED}
