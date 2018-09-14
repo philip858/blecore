@@ -46,8 +46,8 @@ dependencies {
 [http://app.mi.com/details?id=cn.zfs.bledebugger](http://app.mi.com/details?id=cn.zfs.bledebugger "小米应用商店")
 
 ## 调试app截图
-![image](https://github.com/fszeng2011/blecore/blob/master/0d12b411b69c21f97460983f0e22280e5ec424032.jpg)
-![image](https://github.com/fszeng2011/blecore/blob/master/0d12b411b69c22f978609b3f0e222b0e5fc424032.jpg)
-![image](https://github.com/fszeng2011/blecore/blob/master/0d12b411b69c23f97e609c3f09222f0e54c424032.jpg)
-![image](https://github.com/fszeng2011/blecore/blob/master/0e623b5f536864d7b1ef7881cdfdd6f6c420eb5a9.jpg)
-![image](https://github.com/fszeng2011/blecore/blob/master/02b5d84bc72bd4cfa34f80bb3e5ef7439a4ba476b.jpg)
+![image](https://github.com/fszeng2011/blecore/blob/master/screenshot/0d12b411b69c21f97460983f0e22280e5ec424032.jpg)
+![image](https://github.com/fszeng2011/blecore/blob/master/screenshot/0d12b411b69c22f978609b3f0e222b0e5fc424032.jpg)
+![image](https://github.com/fszeng2011/blecore/blob/master/screenshot/0d12b411b69c23f97e609c3f09222f0e54c424032.jpg)
+![image](https://github.com/fszeng2011/blecore/blob/master/screenshot/0e623b5f536864d7b1ef7881cdfdd6f6c420eb5a9.jpg)
+![image](https://github.com/fszeng2011/blecore/blob/master/screenshot/02b5d84bc72bd4cfa34f80bb3e5ef7439a4ba476b.jpg)
