@@ -3,11 +3,11 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
 android {
-    compileSdkVersion 27
+    compileSdkVersion rootProject.ext.compileSdkVersion
     defaultConfig {
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
         applicationId "cn.zfs.bledemo"
-        minSdkVersion 19
-        targetSdkVersion 27
         versionCode 7
         versionName "1.6"
     }
@@ -26,7 +26,7 @@ dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "com.android.support:appcompat-v7:$support_lib_version"
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    implementation 'com.github.fszeng2011:common:1.3.1'
+    implementation 'com.github.fszeng2011:common:1.5.3'
     implementation "org.greenrobot:eventbus:$eventbus_version"
     implementation project(':library')
 }

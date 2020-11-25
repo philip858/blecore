@@ -96,7 +96,7 @@ public class Ble {
 
     public static void println(Class cls, int priority, @NonNull String msg) {
         Ble.getInstance().postEvent(Events.newLogChanged(msg, BleLogger.getLevel(priority)));
-        Ble.getInstance().logger.println("blelib:" + cls.getSimpleName(), priority, "blelib--" + msg);
+        Ble.getInstance().logger.println("blelib:" + cls.getSimpleName(), priority, msg);
     }
     
     public BleConfig getBleConfig() {
@@ -454,7 +454,7 @@ public class Ble {
             dev.scanRecord = scanRecord;
             handleScanCallback(false, dev, -1, "");
         }
-        println(Ble.class, Log.DEBUG, String.format(Locale.US, "FOUND DEVICE [name: %s, mac: %s]", deviceName, device.getAddress()));
+        println(Ble.class, Log.DEBUG, String.format(Locale.US, "found device! [name: %s, mac: %s]", deviceName, device.getAddress()));
     }
     
     /**
@@ -505,7 +505,7 @@ public class Ble {
     /**
      * 获取连接状态
      * @return {@link Connection#STATE_DISCONNECTED}<br> {@link Connection#STATE_CONNECTING}<br>
-     *              {@link Connection#STATE_RECONNECTING}<br> {@link Connection#STATE_CONNECTED}<br>
+     *              {@link Connection#STATE_SCANNING}<br> {@link Connection#STATE_CONNECTED}<br>
      *              {@link Connection#STATE_SERVICE_DISCOVERING}<br> {@link Connection#STATE_SERVICE_DISCOVERED}
      */
     public int getConnectionState(Device device) {
